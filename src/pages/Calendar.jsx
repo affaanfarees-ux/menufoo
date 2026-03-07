@@ -29,14 +29,14 @@ function LunchPill({ lunch, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-[#16213e] hover:bg-green-400/10 border border-green-400/20 rounded-lg p-1.5 transition-colors"
+      className="w-full text-left bg-[#16213e] hover:bg-green-400/10 border border-green-400/20 rounded-lg p-1 sm:p-1.5 transition-colors"
     >
       {lunch.imageUrl && (
-        <img src={lunch.imageUrl} alt="" className="w-full h-12 object-cover rounded mb-1" />
+        <img src={lunch.imageUrl} alt="" className="hidden sm:block w-full h-12 object-cover rounded mb-1" />
       )}
       <p className="text-white text-xs font-semibold truncate leading-tight">{lunch.name}</p>
       {avg && (
-        <p className="text-yellow-400 text-xs font-black mt-0.5">{avg}★</p>
+        <p className="text-yellow-400 text-xs font-black mt-0.5 hidden sm:block">{avg}★</p>
       )}
     </button>
   )
@@ -156,18 +156,18 @@ export default function Calendar() {
   const todayKey = toKey(today.getFullYear(), today.getMonth(), today.getDate())
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-black text-white">Calendar</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={prevMonth}
             className="w-9 h-9 rounded-xl bg-[#0f3460] border border-green-400/20 text-green-400 hover:bg-green-400/20 font-bold transition-colors"
           >
             ‹
           </button>
-          <span className="text-white font-black text-lg w-44 text-center">
+          <span className="text-white font-black text-base sm:text-lg w-36 sm:w-44 text-center">
             {MONTHS[month]} {year}
           </span>
           <button
@@ -178,7 +178,7 @@ export default function Calendar() {
           </button>
           <button
             onClick={() => { setMonth(today.getMonth()); setYear(today.getFullYear()) }}
-            className="ml-2 px-3 py-1.5 rounded-xl bg-green-400/10 text-green-400 border border-green-400/20 text-sm font-bold hover:bg-green-400/20 transition-colors"
+            className="ml-1 px-3 py-1.5 rounded-xl bg-green-400/10 text-green-400 border border-green-400/20 text-sm font-bold hover:bg-green-400/20 transition-colors"
           >
             Today
           </button>
@@ -206,7 +206,7 @@ export default function Calendar() {
           return (
             <div
               key={i}
-              className={`min-h-24 rounded-xl p-1.5 border transition-colors ${
+              className={`min-h-14 sm:min-h-24 rounded-xl p-1 sm:p-1.5 border transition-colors ${
                 !isCurrentMonth
                   ? 'border-transparent'
                   : isToday

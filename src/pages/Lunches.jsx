@@ -26,6 +26,8 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
   const [newName, setNewName] = useState(lunch.name)
   const [newDate, setNewDate] = useState(toDateInputValue(lunch.date))
   const [newComponent, setNewComponent] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState(null)
 
   const isParent = userProfile?.role === 'parent'
   const isCreator = lunch.createdBy === currentUser.uid
@@ -74,6 +76,22 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
     await updateDoc(lunchRef, { ratings })
   }
 
+  async function handlePhotoChange(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setPhotoPreview(URL.createObjectURL(file))
+    setUploadingPhoto(true)
+    try {
+      const storageRef = ref(storage, `lunches/${Date.now()}_${file.name}`)
+      await uploadBytes(storageRef, file)
+      const imageUrl = await getDownloadURL(storageRef)
+      await updateDoc(lunchRef, { imageUrl })
+    } catch (err) {
+      console.error(err)
+    }
+    setUploadingPhoto(false)
+  }
+
   async function deleteLunch() {
     if (window.confirm('Delete this lunch entry?')) {
       await deleteDoc(lunchRef)
@@ -88,11 +106,13 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
     return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
   })()
 
+  const displayImage = photoPreview || lunch.imageUrl
+
   return (
     <div className="bg-[#0f3460] rounded-2xl border border-green-400/20 overflow-hidden">
-      {lunch.imageUrl && (
+      {displayImage && (
         <img
-          src={lunch.imageUrl}
+          src={displayImage}
           alt={lunch.name}
           className="w-full h-48 object-cover cursor-pointer"
           onClick={() => setExpanded(!expanded)}
@@ -101,7 +121,7 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
       <div className="p-4">
         {/* Name row */}
         <div className="flex items-center justify-between mb-1">
-          {editingName && (isParent || isCreator) ? (
+          {editingName && canEdit ? (
             <div className="flex gap-2 flex-1">
               <input
                 value={newName}
@@ -171,6 +191,27 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
 
         {expanded && (
           <div className="mt-4 border-t border-green-400/10 pt-4">
+
+            {/* Photo upload */}
+            <div className="mb-4">
+              <h4 className="text-green-300 font-bold text-sm mb-2">Photo</h4>
+              <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm font-bold transition-colors ${
+                uploadingPhoto
+                  ? 'bg-green-400/10 border-green-400/20 text-green-300/50'
+                  : 'bg-green-400/10 border-green-400/30 text-green-400 hover:bg-green-400/20'
+              }`}>
+                {uploadingPhoto ? '⏳ Uploading...' : lunch.imageUrl ? '📷 Change Photo' : '📷 Add Photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePhotoChange}
+                  disabled={uploadingPhoto}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
             <h4 className="text-green-300 font-bold text-sm mb-2">Food Items</h4>
             {(lunch.components || []).length === 0 && (
               <p className="text-green-300/40 text-xs mb-2">No items yet.</p>
@@ -180,7 +221,7 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
                 <div key={comp.id} className="bg-[#16213e] rounded-lg p-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-white text-sm font-semibold">{comp.name}</span>
-                    {(isParent || isCreator) && (
+                    {canEdit && (
                       <button
                         onClick={() => removeComponent(comp.id)}
                         className="text-red-400/60 hover:text-red-400 text-xs"
@@ -225,12 +266,12 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
                 value={newComponent}
                 onChange={(e) => setNewComponent(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addComponent()}
-                className="flex-1 bg-[#16213e] border border-green-400/30 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-green-400"
+                className="flex-1 bg-[#16213e] border border-green-400/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-400"
                 placeholder="Add item (e.g. chips)"
               />
               <button
                 onClick={addComponent}
-                className="bg-green-400/20 text-green-400 border border-green-400/30 rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-green-400/30"
+                className="bg-green-400/20 text-green-400 border border-green-400/30 rounded-lg px-3 py-2 text-sm font-bold hover:bg-green-400/30"
               >
                 + Add
               </button>
@@ -332,12 +373,12 @@ export default function Lunches() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black text-white">Lunch Log</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-green-400 text-[#0f3460] font-black px-4 py-2 rounded-xl hover:bg-green-300 transition-colors"
+          className="bg-green-400 text-[#0f3460] font-black px-4 py-2 rounded-xl hover:bg-green-300 transition-colors text-sm"
         >
           {showForm ? '✕ Cancel' : '+ New Lunch'}
         </button>
@@ -356,7 +397,7 @@ export default function Lunches() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-[#16213e] border border-green-400/30 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-green-400"
+                className="w-full bg-[#16213e] border border-green-400/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-green-400"
                 placeholder="e.g. PB&J Tuesday"
               />
             </div>
@@ -367,18 +408,21 @@ export default function Lunches() {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full bg-[#16213e] border border-green-400/30 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-green-400"
+                className="w-full bg-[#16213e] border border-green-400/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-green-400"
               />
             </div>
             <div>
-              <label className="block text-green-300 text-sm font-semibold mb-1">Photo (optional)</label>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageChange}
-                className="text-green-300 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-green-400/20 file:text-green-400 file:font-bold cursor-pointer"
-              />
+              <label className="block text-green-300 text-sm font-semibold mb-2">Photo (optional)</label>
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-green-400/30 bg-green-400/10 text-green-400 font-bold text-sm cursor-pointer hover:bg-green-400/20">
+                📷 Choose Photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </label>
               {imagePreview && (
                 <img src={imagePreview} alt="Preview" className="mt-2 rounded-lg h-40 object-cover w-full" />
               )}
@@ -386,7 +430,7 @@ export default function Lunches() {
             <button
               type="submit"
               disabled={submitting}
-              className="bg-green-400 text-[#0f3460] font-black py-2.5 rounded-lg hover:bg-green-300 transition-colors disabled:opacity-50"
+              className="bg-green-400 text-[#0f3460] font-black py-3 rounded-lg hover:bg-green-300 transition-colors disabled:opacity-50"
             >
               {submitting ? 'Saving...' : 'Save Lunch'}
             </button>
