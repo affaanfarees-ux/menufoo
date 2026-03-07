@@ -66,12 +66,18 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
 
   async function rateComponent(componentId, stars) {
     const ratings = { ...(lunch.ratings || {}) }
+    const updatedComponents = {
+      ...((ratings[currentUser.uid] || {}).components || {}),
+      [componentId]: stars,
+    }
+    const componentVals = Object.values(updatedComponents).filter(Boolean)
+    const autoOverall = componentVals.length
+      ? Math.round(componentVals.reduce((a, b) => a + b, 0) / componentVals.length)
+      : (ratings[currentUser.uid]?.overall || 0)
     ratings[currentUser.uid] = {
       ...(ratings[currentUser.uid] || {}),
-      components: {
-        ...((ratings[currentUser.uid] || {}).components || {}),
-        [componentId]: stars,
-      },
+      components: updatedComponents,
+      overall: autoOverall,
     }
     await updateDoc(lunchRef, { ratings })
   }
