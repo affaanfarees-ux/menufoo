@@ -50,6 +50,8 @@ export default function PhysicsPlayground() {
   useEffect(() => {
     if (obstaclesEnabled) {
       const obs = Array.from({ length: NUM_OBSTACLES }, (_, i) => makeObstacle(i))
+      const smallest = obs.reduce((a, b) => a.size < b.size ? a : b)
+      smallest.follower = true
       obsData.current = obs
       setObstacles(obs)
     } else {
@@ -99,6 +101,21 @@ export default function PhysicsPlayground() {
 
       if (cubeEnabled && cubeRef.current) {
         cubeRef.current.style.transform = `translate(${c.x}px, ${c.y}px)`
+      }
+
+      // Follower logic — smallest obstacle chases the cube
+      if (cubeEnabled) {
+        obsData.current.forEach((obs) => {
+          if (obs.follower && dragTarget.current !== obsData.current.indexOf(obs)) {
+            const dx = c.x + CUBE_SIZE / 2 - (obs.x + obs.size / 2)
+            const dy = c.y + CUBE_SIZE / 2 - (obs.y + obs.size / 2)
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            if (dist > 5) {
+              obs.x += (dx / dist) * 1.5
+              obs.y += (dy / dist) * 1.5
+            }
+          }
+        })
       }
 
       // Update obstacle DOM positions
