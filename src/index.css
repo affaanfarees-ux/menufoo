@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
+:root {
+  --bg: #1a1a2e;
+  --surface: #0f3460;
+}
+
 body {
   margin: 0;
-  background-color: #1a1a2e;
+  background-color: var(--bg);
   color: #e2e8f0;
   font-family: 'Segoe UI', system-ui, sans-serif;
   min-height: 100vh;

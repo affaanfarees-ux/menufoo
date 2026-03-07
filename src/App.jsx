@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -8,6 +9,7 @@ import Calendar from './pages/Calendar'
 import Recommendations from './pages/Recommendations'
 import WeeklyPlanner from './pages/WeeklyPlanner'
 import ShoppingList from './pages/ShoppingList'
+import Settings from './pages/Settings'
 
 function PrivateRoute({ children }) {
   const { currentUser } = useAuth()
@@ -41,6 +43,7 @@ function AppRoutes() {
                   <Route path="/recommend" element={<Recommendations />} />
                   <Route path="/planner" element={<ParentRoute><WeeklyPlanner /></ParentRoute>} />
                   <Route path="/shopping" element={<ParentRoute><ShoppingList /></ParentRoute>} />
+                  <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<Navigate to="/lunches" replace />} />
                 </Routes>
               </main>
@@ -57,9 +60,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <HashRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     </HashRouter>
   )
 }

@@ -8,6 +8,7 @@ const navItems = [
   { to: '/recommend', label: 'Recommendations', roles: ['student', 'parent'] },
   { to: '/planner', label: 'Weekly Planner', roles: ['parent'] },
   { to: '/shopping', label: 'Shopping List', roles: ['parent'] },
+  { to: '/settings', label: '⚙ Settings', roles: ['student', 'parent'] },
 ]
 
 export default function Navbar() {
