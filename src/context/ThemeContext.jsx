@@ -20,6 +20,7 @@ export function useTheme() {
 
 export function ThemeProvider({ children }) {
   const [colorId, setColorId] = useState(() => localStorage.getItem('mf_color') || 'default')
+  const [cubeEnabled, setCubeEnabled] = useState(() => localStorage.getItem('mf_cube') === 'true')
 
   const current = COLORS.find((c) => c.id === colorId) || COLORS[0]
 
@@ -34,8 +35,15 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('mf_color', id)
   }
 
+  function toggleCube() {
+    setCubeEnabled((prev) => {
+      localStorage.setItem('mf_cube', !prev)
+      return !prev
+    })
+  }
+
   return (
-    <ThemeContext.Provider value={{ colorId, setColor, current, COLORS }}>
+    <ThemeContext.Provider value={{ colorId, setColor, current, COLORS, cubeEnabled, toggleCube }}>
       {children}
     </ThemeContext.Provider>
   )

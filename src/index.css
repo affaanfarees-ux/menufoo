@@ -27,3 +27,9 @@ body {
   background: #4ade80;
   border-radius: 3px;
 }
+
+@keyframes cubeRainbow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

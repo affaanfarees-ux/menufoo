@@ -1,7 +1,8 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { ThemeProvider } from './context/ThemeContext'
+import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Navbar from './components/Navbar'
+import PhysicsCube from './components/PhysicsCube'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Lunches from './pages/Lunches'
@@ -24,36 +25,40 @@ function ParentRoute({ children }) {
 
 function AppRoutes() {
   const { currentUser } = useAuth()
+  const { cubeEnabled } = useTheme()
 
   return (
-    <Routes>
-      <Route path="/login" element={currentUser ? <Navigate to="/lunches" /> : <Login />} />
-      <Route path="/signup" element={currentUser ? <Navigate to="/lunches" /> : <Signup />} />
+    <>
+      {cubeEnabled && <PhysicsCube />}
+      <Routes>
+        <Route path="/login" element={currentUser ? <Navigate to="/lunches" /> : <Login />} />
+        <Route path="/signup" element={currentUser ? <Navigate to="/lunches" /> : <Signup />} />
 
-      <Route
-        path="/*"
-        element={
-          <PrivateRoute>
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/lunches" element={<Lunches />} />
-                  <Route path="/calendar" element={<Calendar />} />
-                  <Route path="/recommend" element={<Recommendations />} />
-                  <Route path="/planner" element={<ParentRoute><WeeklyPlanner /></ParentRoute>} />
-                  <Route path="/shopping" element={<ParentRoute><ShoppingList /></ParentRoute>} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/lunches" replace />} />
-                </Routes>
-              </main>
-            </div>
-          </PrivateRoute>
-        }
-      />
+        <Route
+          path="/*"
+          element={
+            <PrivateRoute>
+              <div className="min-h-screen flex flex-col">
+                <Navbar />
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/lunches" element={<Lunches />} />
+                    <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/recommend" element={<Recommendations />} />
+                    <Route path="/planner" element={<ParentRoute><WeeklyPlanner /></ParentRoute>} />
+                    <Route path="/shopping" element={<ParentRoute><ShoppingList /></ParentRoute>} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/lunches" replace />} />
+                  </Routes>
+                </main>
+              </div>
+            </PrivateRoute>
+          }
+        />
 
-      <Route path="/" element={<Navigate to="/lunches" replace />} />
-    </Routes>
+        <Route path="/" element={<Navigate to="/lunches" replace />} />
+      </Routes>
+    </>
   )
 }
 
