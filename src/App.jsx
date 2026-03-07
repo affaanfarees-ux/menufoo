@@ -25,11 +25,11 @@ function ParentRoute({ children }) {
 
 function AppRoutes() {
   const { currentUser } = useAuth()
-  const { cubeEnabled } = useTheme()
+  const { cubeEnabled, obstaclesEnabled } = useTheme()
 
   return (
     <>
-      {cubeEnabled && <PhysicsCube />}
+      {(cubeEnabled || obstaclesEnabled) && <PhysicsCube />}
       <Routes>
         <Route path="/login" element={currentUser ? <Navigate to="/lunches" /> : <Login />} />
         <Route path="/signup" element={currentUser ? <Navigate to="/lunches" /> : <Signup />} />

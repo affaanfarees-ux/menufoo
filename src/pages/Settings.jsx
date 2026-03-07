@@ -21,7 +21,7 @@ const BORDER_PREVIEWS = {
 }
 
 export default function Settings() {
-  const { colorId, setColor, COLORS, cubeEnabled, toggleCube } = useTheme()
+  const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles } = useTheme()
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-6">
@@ -81,13 +81,28 @@ export default function Settings() {
               <p className="text-green-300/50 text-xs">A bouncy cube you can throw around the screen</p>
             </div>
           </div>
-          {/* Toggle pill */}
-          <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${
-            cubeEnabled ? 'bg-green-400' : 'bg-green-400/20'
-          }`}>
-            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-              cubeEnabled ? 'translate-x-6' : 'translate-x-0'
-            }`} />
+          <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${cubeEnabled ? 'bg-green-400' : 'bg-green-400/20'}`}>
+            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${cubeEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+          </div>
+        </button>
+
+        <button
+          onClick={toggleObstacles}
+          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all mt-3 ${
+            obstaclesEnabled
+              ? 'border-green-400 bg-green-400/10'
+              : 'border-green-400/20 hover:border-green-400/40'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🟦</span>
+            <div className="text-left">
+              <p className="text-white font-bold text-sm">Obstacles</p>
+              <p className="text-green-300/50 text-xs">4 random draggable blocks that bounce the cube</p>
+            </div>
+          </div>
+          <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${obstaclesEnabled ? 'bg-green-400' : 'bg-green-400/20'}`}>
+            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${obstaclesEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
           </div>
         </button>
       </div>
