@@ -69,6 +69,13 @@ export default function PhysicsPlayground() {
   // --- Drag tracking ---
   const dragTarget = useRef(null) // 'cube' | number | null
 
+  // --- Placement state ---
+  const [placeSize, setPlaceSize] = useState(2)
+  const placeSizeRef = useRef(2)
+  const placing = useRef(null) // type string | null
+  const ghostRef = useRef(null)
+  const toolbarRef = useRef(null)
+
   // --- Animation loop (always runs while mounted) ---
   useEffect(() => {
     let raf
@@ -199,9 +206,18 @@ export default function PhysicsPlayground() {
     return () => cancelAnimationFrame(raf)
   }, []) // run once on mount; reads refs every frame
 
-  // --- Global mouse handlers ---
+  // --- Global mouse/touch handlers ---
   useEffect(() => {
     function onMouseMove(e) {
+      // Placement ghost follows cursor
+      if (placing.current) {
+        const size = placeSizeRef.current * 96
+        if (ghostRef.current) {
+          ghostRef.current.style.transform = `translate(${e.clientX - size / 2}px, ${e.clientY - size / 2}px)`
+        }
+        return
+      }
+
       const target = dragTarget.current
       if (target === null) return
       const now = Date.now()
@@ -222,8 +238,42 @@ export default function PhysicsPlayground() {
       }
     }
 
-    function onMouseUp() {
+    function onMouseUp(e) {
+      // Place new obstacle from toolbar
+      if (placing.current) {
+        const type = placing.current
+        const size = placeSizeRef.current * 96
+        const newObs = {
+          id: Date.now(),
+          size: type === 'follower' ? 96 : size,
+          x: e.clientX - size / 2,
+          y: e.clientY - size / 2,
+          color: OBS_COLORS[obsData.current.length % OBS_COLORS.length],
+          follower: type === 'follower',
+          iceZone: type === 'iceZone',
+        }
+        const updated = [...obsData.current, newObs]
+        obsData.current = updated
+        setObstacles([...updated])
+        if (ghostRef.current) ghostRef.current.style.display = 'none'
+        placing.current = null
+        return
+      }
+
+      // Retract: obstacle dragged back over toolbar → remove it
       const target = dragTarget.current
+      if (typeof target === 'number' && toolbarRef.current) {
+        const tb = toolbarRef.current.getBoundingClientRect()
+        if (e.clientX >= tb.left && e.clientX <= tb.right &&
+            e.clientY >= tb.top  && e.clientY <= tb.bottom) {
+          const updated = obsData.current.filter((_, i) => i !== target)
+          obsData.current = updated
+          setObstacles([...updated])
+          dragTarget.current = null
+          return
+        }
+      }
+
       if (target === 'cube') {
         const c = cube.current
         c.dragging = false
@@ -236,11 +286,45 @@ export default function PhysicsPlayground() {
       dragTarget.current = null
     }
 
+    function onTouchMove(e) {
+      if (!placing.current) return
+      const t = e.touches[0]
+      const size = placeSizeRef.current * 96
+      if (ghostRef.current) {
+        ghostRef.current.style.transform = `translate(${t.clientX - size / 2}px, ${t.clientY - size / 2}px)`
+      }
+    }
+
+    function onTouchEnd(e) {
+      if (!placing.current) return
+      const t = e.changedTouches[0]
+      const type = placing.current
+      const size = placeSizeRef.current * 96
+      const newObs = {
+        id: Date.now(),
+        size: type === 'follower' ? 96 : size,
+        x: t.clientX - size / 2,
+        y: t.clientY - size / 2,
+        color: OBS_COLORS[obsData.current.length % OBS_COLORS.length],
+        follower: type === 'follower',
+        iceZone: type === 'iceZone',
+      }
+      const updated = [...obsData.current, newObs]
+      obsData.current = updated
+      setObstacles([...updated])
+      if (ghostRef.current) ghostRef.current.style.display = 'none'
+      placing.current = null
+    }
+
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('touchend', onTouchEnd)
     return () => {
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
     }
   }, [])
 
@@ -308,6 +392,52 @@ export default function PhysicsPlayground() {
     dragTarget.current = null
   }
 
+  // --- Toolbar placement ---
+  function startPlacing(e, type) {
+    e.preventDefault()
+    e.stopPropagation()
+    placing.current = type
+    const size = placeSizeRef.current * 96
+    const ghost = ghostRef.current
+    if (!ghost) return
+    ghost.style.width = size + 'px'
+    ghost.style.height = size + 'px'
+    ghost.style.lineHeight = '1'
+    ghost.style.display = 'flex'
+    ghost.style.alignItems = 'center'
+    ghost.style.justifyContent = 'center'
+    ghost.style.opacity = '0.75'
+    ghost.style.pointerEvents = 'none'
+    if (type === 'follower') {
+      ghost.style.background = 'transparent'
+      ghost.style.clipPath = ''
+      ghost.style.borderRadius = '0'
+      ghost.style.border = 'none'
+      ghost.style.filter = 'grayscale(1) drop-shadow(0 0 4px rgba(255,255,255,0.8))'
+      ghost.textContent = '👾'
+      ghost.style.fontSize = 96 * 0.85 + 'px'
+    } else if (type === 'iceZone') {
+      ghost.style.background = 'rgba(0,206,209,0.25)'
+      ghost.style.clipPath = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
+      ghost.style.borderRadius = '0'
+      ghost.style.border = '2px solid rgba(0,206,209,0.6)'
+      ghost.style.filter = 'drop-shadow(0 0 10px rgba(0,206,209,0.8))'
+      ghost.textContent = ''
+      ghost.style.fontSize = ''
+    } else {
+      ghost.style.background = OBS_COLORS[obsData.current.length % OBS_COLORS.length]
+      ghost.style.clipPath = ''
+      ghost.style.borderRadius = '12px'
+      ghost.style.border = 'none'
+      ghost.style.filter = 'none'
+      ghost.textContent = ''
+      ghost.style.fontSize = ''
+    }
+    const cx = e.clientX ?? e.touches?.[0]?.clientX ?? 0
+    const cy = e.clientY ?? e.touches?.[0]?.clientY ?? 0
+    ghost.style.transform = `translate(${cx - size / 2}px, ${cy - size / 2}px)`
+  }
+
   return (
     <>
       {cubeEnabled && (
@@ -329,6 +459,68 @@ export default function PhysicsPlayground() {
             boxShadow: '0 12px 40px rgba(0,0,0,0.6), inset 0 2px 8px rgba(255,255,255,0.3)',
           }}
         />
+      )}
+
+      {/* Ghost element for placement drag */}
+      <div
+        ref={ghostRef}
+        style={{
+          position: 'fixed', top: 0, left: 0,
+          display: 'none',
+          zIndex: 10001,
+          userSelect: 'none', pointerEvents: 'none',
+        }}
+      />
+
+      {/* Placement toolbar */}
+      {obstaclesEnabled && (
+        <div style={{ position: 'fixed', bottom: 16, left: 16, display: 'flex', alignItems: 'flex-end', gap: 8, zIndex: 10000 }}>
+          {/* Vertical size slider */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10 }}>5</span>
+            <input
+              type="range" min="1" max="5"
+              value={placeSize}
+              onChange={e => { const n = parseInt(e.target.value); setPlaceSize(n); placeSizeRef.current = n }}
+              style={{ writingMode: 'vertical-lr', direction: 'rtl', height: 80, cursor: 'pointer', accentColor: '#4ade80' }}
+            />
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10 }}>1</span>
+          </div>
+
+          {/* Palette bar */}
+          <div
+            ref={toolbarRef}
+            style={{
+              background: 'rgba(15,52,96,0.92)', border: '1px solid rgba(74,222,128,0.35)',
+              borderRadius: 16, padding: '8px 10px', display: 'flex', gap: 8,
+              backdropFilter: 'blur(10px)', boxShadow: '0 4px 20px rgba(0,0,0,0.45)',
+            }}
+          >
+            {/* Space invader */}
+            <div
+              onMouseDown={e => startPlacing(e, 'follower')}
+              onTouchStart={e => startPlacing(e, 'follower')}
+              title="Space Invader (drag to place)"
+              style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, cursor: 'grab', borderRadius: 8, background: 'rgba(0,0,0,0.3)', filter: 'grayscale(1)', userSelect: 'none', border: '1px solid rgba(255,255,255,0.1)', touchAction: 'none' }}
+            >👾</div>
+
+            {/* Hexagon */}
+            <div
+              onMouseDown={e => startPlacing(e, 'iceZone')}
+              onTouchStart={e => startPlacing(e, 'iceZone')}
+              title="Ice Zone (drag to place)"
+              style={{ width: 44, height: 44, cursor: 'grab', background: 'rgba(0,206,209,0.3)', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)', filter: 'drop-shadow(0 0 5px rgba(0,206,209,0.7))', userSelect: 'none', touchAction: 'none' }}
+            />
+
+            {/* Plain cube */}
+            <div
+              onMouseDown={e => startPlacing(e, 'plain')}
+              onTouchStart={e => startPlacing(e, 'plain')}
+              title="Plain Cube (drag to place)"
+              style={{ width: 44, height: 44, cursor: 'grab', background: '#e74c3c', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.4)', userSelect: 'none', touchAction: 'none' }}
+            />
+          </div>
+        </div>
       )}
 
       {obstacles.map((obs, i) => (

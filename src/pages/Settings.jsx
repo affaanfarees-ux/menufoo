@@ -21,7 +21,7 @@ const BORDER_PREVIEWS = {
 }
 
 export default function Settings() {
-  const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, obstacleCount, setObstacleCount, specialObstacles, toggleSpecialObstacles } = useTheme()
+  const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, specialObstacles, toggleSpecialObstacles } = useTheme()
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-6">
@@ -109,25 +109,6 @@ export default function Settings() {
 
           {obstaclesEnabled && (
             <div className="border-2 border-t-0 border-green-400 bg-green-400/5 rounded-b-xl px-4 py-4 flex flex-col gap-4">
-              {/* Count slider */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-green-300/70 text-xs font-bold uppercase tracking-wider">Number of obstacles</span>
-                  <span className="text-green-400 font-black text-sm">{obstacleCount}</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="7"
-                  value={obstacleCount}
-                  onChange={(e) => setObstacleCount(parseInt(e.target.value, 10))}
-                  className="w-full accent-green-400 cursor-pointer"
-                />
-                <div className="flex justify-between text-green-300/30 text-xs mt-1">
-                  <span>1</span><span>7</span>
-                </div>
-              </div>
-
               {/* Special / plain toggle */}
               <div>
                 <p className="text-green-300/70 text-xs font-bold uppercase tracking-wider mb-2">Mode</p>
