@@ -52,6 +52,7 @@ export default function PhysicsPlayground() {
       const obs = Array.from({ length: NUM_OBSTACLES }, (_, i) => makeObstacle(i))
       const smallest = obs.reduce((a, b) => a.size < b.size ? a : b)
       smallest.follower = true
+      smallest.size = 96 // fixed 1 inch
       obsData.current = obs
       setObstacles(obs)
     } else {
