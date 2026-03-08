@@ -115,8 +115,30 @@ export default function PhysicsPlayground() {
             obs.angle = Math.atan2(dy, dx) * 180 / Math.PI + 90 // always face cube
             const stopDist = (CUBE_SIZE + obs.size) / 2
             if (dist > stopDist) {
-              obs.x += (dx / dist) * 1.5
-              obs.y += (dy / dist) * 1.5
+              // Desired direction toward cube
+              let moveX = dx / dist
+              let moveY = dy / dist
+
+              // Repel away from other obstacles to steer around them
+              obsData.current.forEach((other) => {
+                if (other.follower) return
+                const ox = (obs.x + obs.size / 2) - (other.x + other.size / 2)
+                const oy = (obs.y + obs.size / 2) - (other.y + other.size / 2)
+                const oDist = Math.sqrt(ox * ox + oy * oy)
+                const influence = (obs.size + other.size) / 2 + 48
+                if (oDist < influence && oDist > 0) {
+                  const strength = (influence - oDist) / influence
+                  moveX += (ox / oDist) * strength * 3
+                  moveY += (oy / oDist) * strength * 3
+                }
+              })
+
+              // Normalize and move at constant speed
+              const mag = Math.sqrt(moveX * moveX + moveY * moveY)
+              if (mag > 0) {
+                obs.x += (moveX / mag) * 1.5
+                obs.y += (moveY / mag) * 1.5
+              }
               obs.arrived = false
             } else if (!obs.arrived) {
               obs.arrived = true
