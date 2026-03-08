@@ -53,6 +53,8 @@ export default function PhysicsPlayground() {
       const smallest = obs.reduce((a, b) => a.size < b.size ? a : b)
       smallest.follower = true
       smallest.size = 96 // fixed 1 inch
+      const biggest = obs.reduce((a, b) => a.size > b.size ? a : b)
+      if (biggest !== smallest) biggest.iceZone = true
       obsData.current = obs
       setObstacles(obs)
     } else {
@@ -71,6 +73,17 @@ export default function PhysicsPlayground() {
     function loop() {
       const c = cube.current
 
+      // Ice zone check — runs every frame regardless of drag state
+      let inIce = false
+      if (cubeEnabled) {
+        obsData.current.forEach((obs) => {
+          if (!obs.iceZone) return
+          const overlapX = Math.min(c.x + CUBE_SIZE, obs.x + obs.size) - Math.max(c.x, obs.x)
+          const overlapY = Math.min(c.y + CUBE_SIZE, obs.y + obs.size) - Math.max(c.y, obs.y)
+          if (overlapX > 0 && overlapY > 0) inIce = true
+        })
+      }
+
       if (cubeEnabled && !c.dragging) {
         c.vy += GRAVITY
         c.x += c.vx
@@ -84,9 +97,9 @@ export default function PhysicsPlayground() {
         if (c.x < 0)     { c.x = 0;    c.vx *= -DAMPING }
         if (c.x >= maxX) { c.x = maxX; c.vx *= -DAMPING }
 
-        // Obstacle collision (AABB) — follower passes through cube
+        // Obstacle collision (AABB) — follower and ice zone pass through cube
         obsData.current.forEach((obs) => {
-          if (obs.follower) return
+          if (obs.follower || obs.iceZone) return
           const overlapX = Math.min(c.x + CUBE_SIZE, obs.x + obs.size) - Math.max(c.x, obs.x)
           const overlapY = Math.min(c.y + CUBE_SIZE, obs.y + obs.size) - Math.max(c.y, obs.y)
           if (overlapX > 0 && overlapY > 0) {
@@ -99,10 +112,20 @@ export default function PhysicsPlayground() {
             }
           }
         })
+
+        // Slow cube inside ice zone
+        if (inIce) { c.vx *= 0.96; c.vy *= 0.96 }
       }
 
       if (cubeEnabled && cubeRef.current) {
         cubeRef.current.style.transform = `translate(${c.x}px, ${c.y}px)`
+        cubeRef.current.style.filter = inIce
+          ? 'hue-rotate(160deg) saturate(0.45) brightness(1.4)'
+          : ''
+        cubeRef.current.style.boxShadow = inIce
+          ? 'inset 0 0 0 8px rgba(160,230,255,0.85), inset 0 0 28px rgba(100,200,255,0.5), 0 0 28px rgba(100,200,255,0.6)'
+          : '0 12px 40px rgba(0,0,0,0.6), inset 0 2px 8px rgba(255,255,255,0.3)'
+        cubeRef.current.style.outline = inIce ? '3px solid rgba(200,240,255,0.7)' : ''
       }
 
       // Follower logic — smallest obstacle chases the cube
@@ -318,22 +341,47 @@ export default function PhysicsPlayground() {
             width: obs.size, height: obs.size,
             zIndex: 9998, cursor: 'grab',
             userSelect: 'none', touchAction: 'none', willChange: 'transform',
-            borderRadius: obs.follower ? 0 : 12,
-            backgroundColor: obs.follower ? 'transparent' : obs.color,
-            boxShadow: obs.follower ? 'none' : '0 8px 24px rgba(0,0,0,0.5)',
+            borderRadius: (obs.follower || obs.iceZone) ? 0 : 12,
+            backgroundColor: obs.follower
+              ? 'transparent'
+              : obs.iceZone
+              ? 'rgba(0, 206, 209, 0.18)'
+              : obs.color,
+            boxShadow: (obs.follower || obs.iceZone) ? 'none' : '0 8px 24px rgba(0,0,0,0.5)',
             filter: obs.follower
               ? 'grayscale(1) drop-shadow(0 0 4px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,1))'
+              : obs.iceZone
+              ? 'drop-shadow(0 0 12px rgba(0,206,209,0.9)) drop-shadow(0 0 6px rgba(0,206,209,0.6))'
               : 'none',
+            clipPath: obs.iceZone
+              ? 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
+              : 'none',
+            border: obs.iceZone ? '2px solid rgba(0,206,209,0.6)' : 'none',
+            overflow: obs.iceZone ? 'hidden' : 'visible',
             transform: `translate(${obs.x}px, ${obs.y}px)`,
-            display: obs.follower ? 'flex' : 'block',
+            display: (obs.follower || obs.iceZone) ? 'flex' : 'block',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: obs.follower ? obs.size * 0.9 : undefined,
             lineHeight: 1,
-            border: 'none',
           }}
         >
           {obs.follower && '👾'}
+          {obs.iceZone && Array.from({ length: 9 }, (_, si) => (
+            <span
+              key={si}
+              style={{
+                position: 'absolute',
+                left: `${5 + (si * 11) % 85}%`,
+                top: 0,
+                fontSize: `${10 + (si % 3) * 6}px`,
+                animation: `snowfall ${1.6 + (si % 4) * 0.55}s linear ${-(si * 0.45)}s infinite`,
+                pointerEvents: 'none',
+                userSelect: 'none',
+                color: 'rgba(210, 245, 255, 0.9)',
+              }}
+            >❄</span>
+          ))}
         </div>
       ))}
     </>
