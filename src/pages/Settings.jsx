@@ -21,7 +21,7 @@ const BORDER_PREVIEWS = {
 }
 
 export default function Settings() {
-  const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles } = useTheme()
+  const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, obstacleCount, setObstacleCount, specialObstacles, toggleSpecialObstacles } = useTheme()
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-6">
@@ -86,25 +86,73 @@ export default function Settings() {
           </div>
         </button>
 
-        <button
-          onClick={toggleObstacles}
-          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all mt-3 ${
-            obstaclesEnabled
-              ? 'border-green-400 bg-green-400/10'
-              : 'border-green-400/20 hover:border-green-400/40'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🟦</span>
-            <div className="text-left">
-              <p className="text-white font-bold text-sm">Obstacles</p>
-              <p className="text-green-300/50 text-xs">4 random draggable blocks that bounce the cube</p>
+        <div className="mt-3">
+          <button
+            onClick={toggleObstacles}
+            className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+              obstaclesEnabled
+                ? 'border-green-400 bg-green-400/10 rounded-b-none border-b-0'
+                : 'border-green-400/20 hover:border-green-400/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🟦</span>
+              <div className="text-left">
+                <p className="text-white font-bold text-sm">Obstacles</p>
+                <p className="text-green-300/50 text-xs">Draggable blocks that interact with the cube</p>
+              </div>
             </div>
-          </div>
-          <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${obstaclesEnabled ? 'bg-green-400' : 'bg-green-400/20'}`}>
-            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${obstaclesEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-          </div>
-        </button>
+            <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${obstaclesEnabled ? 'bg-green-400' : 'bg-green-400/20'}`}>
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${obstaclesEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            </div>
+          </button>
+
+          {obstaclesEnabled && (
+            <div className="border-2 border-t-0 border-green-400 bg-green-400/5 rounded-b-xl px-4 py-4 flex flex-col gap-4">
+              {/* Count slider */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-green-300/70 text-xs font-bold uppercase tracking-wider">Number of obstacles</span>
+                  <span className="text-green-400 font-black text-sm">{obstacleCount}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="7"
+                  value={obstacleCount}
+                  onChange={(e) => setObstacleCount(parseInt(e.target.value, 10))}
+                  className="w-full accent-green-400 cursor-pointer"
+                />
+                <div className="flex justify-between text-green-300/30 text-xs mt-1">
+                  <span>1</span><span>7</span>
+                </div>
+              </div>
+
+              {/* Special / plain toggle */}
+              <div>
+                <p className="text-green-300/70 text-xs font-bold uppercase tracking-wider mb-2">Mode</p>
+                <button
+                  onClick={toggleSpecialObstacles}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${
+                    specialObstacles
+                      ? 'border-green-400 bg-green-400/10'
+                      : 'border-green-400/20 hover:border-green-400/40'
+                  }`}
+                >
+                  <div className="text-left">
+                    <p className="text-white font-bold text-sm">{specialObstacles ? '✨ Special Obstacles' : '⬜ Plain Cubes'}</p>
+                    <p className="text-green-300/50 text-xs">
+                      {specialObstacles ? 'Space invader follower + icy hexagon zone' : 'All obstacles are simple draggable blocks'}
+                    </p>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${specialObstacles ? 'bg-green-400' : 'bg-green-400/20'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${specialObstacles ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

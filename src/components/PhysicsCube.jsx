@@ -5,7 +5,6 @@ const GRAVITY = 0.6
 const DAMPING = 0.65
 const FRICTION = 0.97
 const CUBE_SIZE = 288 // 3 inches
-const NUM_OBSTACLES = 4
 const OBS_COLORS = ['#e74c3c', '#3498db', '#f39c12', '#9b59b6']
 
 function makeObstacle(id) {
@@ -20,7 +19,7 @@ function makeObstacle(id) {
 }
 
 export default function PhysicsPlayground() {
-  const { cubeEnabled, obstaclesEnabled } = useTheme()
+  const { cubeEnabled, obstaclesEnabled, obstacleCount, specialObstacles } = useTheme()
 
   // --- Cube state ---
   const cubeRef = useRef(null)
@@ -49,19 +48,23 @@ export default function PhysicsPlayground() {
 
   useEffect(() => {
     if (obstaclesEnabled) {
-      const obs = Array.from({ length: NUM_OBSTACLES }, (_, i) => makeObstacle(i))
-      const smallest = obs.reduce((a, b) => a.size < b.size ? a : b)
-      smallest.follower = true
-      smallest.size = 96 // fixed 1 inch
-      const biggest = obs.reduce((a, b) => a.size > b.size ? a : b)
-      if (biggest !== smallest) biggest.iceZone = true
+      const obs = Array.from({ length: obstacleCount }, (_, i) => makeObstacle(i))
+      if (specialObstacles && obs.length > 0) {
+        const smallest = obs.reduce((a, b) => a.size < b.size ? a : b)
+        smallest.follower = true
+        smallest.size = 96
+        if (obs.length > 1) {
+          const biggest = obs.reduce((a, b) => a.size > b.size ? a : b)
+          if (biggest !== smallest) biggest.iceZone = true
+        }
+      }
       obsData.current = obs
       setObstacles(obs)
     } else {
       obsData.current = []
       setObstacles([])
     }
-  }, [obstaclesEnabled])
+  }, [obstaclesEnabled, obstacleCount, specialObstacles])
 
   // --- Drag tracking ---
   const dragTarget = useRef(null) // 'cube' | number | null
@@ -282,8 +285,8 @@ export default function PhysicsPlayground() {
   }
 
   // --- Obstacle handlers ---
-  function onObsMouseDown(e, i) {
-    e.preventDefault(); e.stopPropagation()
+  function onObsMouseDown(evt, i) {
+    evt.preventDefault(); evt.stopPropagation()
     dragTarget.current = i
     if (obstacleRefs.current[i]) obstacleRefs.current[i].style.cursor = 'grabbing'
   }

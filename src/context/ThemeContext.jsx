@@ -22,6 +22,8 @@ export function ThemeProvider({ children }) {
   const [colorId, setColorId] = useState(() => localStorage.getItem('mf_color') || 'default')
   const [cubeEnabled, setCubeEnabled] = useState(() => localStorage.getItem('mf_cube') === 'true')
   const [obstaclesEnabled, setObstaclesEnabled] = useState(() => localStorage.getItem('mf_obs') === 'true')
+  const [obstacleCount, setObstacleCountState] = useState(() => parseInt(localStorage.getItem('mf_obs_count') || '4', 10))
+  const [specialObstacles, setSpecialObstacles] = useState(() => localStorage.getItem('mf_obs_special') !== 'false')
 
   const current = COLORS.find((c) => c.id === colorId) || COLORS[0]
 
@@ -50,8 +52,20 @@ export function ThemeProvider({ children }) {
     })
   }
 
+  function setObstacleCount(n) {
+    setObstacleCountState(n)
+    localStorage.setItem('mf_obs_count', n)
+  }
+
+  function toggleSpecialObstacles() {
+    setSpecialObstacles((prev) => {
+      localStorage.setItem('mf_obs_special', !prev)
+      return !prev
+    })
+  }
+
   return (
-    <ThemeContext.Provider value={{ colorId, setColor, current, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles }}>
+    <ThemeContext.Provider value={{ colorId, setColor, current, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, obstacleCount, setObstacleCount, specialObstacles, toggleSpecialObstacles }}>
       {children}
     </ThemeContext.Provider>
   )
