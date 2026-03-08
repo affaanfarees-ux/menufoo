@@ -88,12 +88,13 @@ export default function PhysicsPlayground() {
           const overlapX = Math.min(c.x + CUBE_SIZE, obs.x + obs.size) - Math.max(c.x, obs.x)
           const overlapY = Math.min(c.y + CUBE_SIZE, obs.y + obs.size) - Math.max(c.y, obs.y)
           if (overlapX > 0 && overlapY > 0) {
+            const knock = obs.follower ? 0.1 : DAMPING
             if (overlapX < overlapY) {
               c.x += c.x < obs.x ? -overlapX : overlapX
-              c.vx *= -DAMPING
+              c.vx *= -knock
             } else {
               c.y += c.y < obs.y ? -overlapY : overlapY
-              c.vy *= -DAMPING
+              c.vy *= -knock
             }
           }
         })
@@ -105,14 +106,20 @@ export default function PhysicsPlayground() {
 
       // Follower logic — smallest obstacle chases the cube
       if (cubeEnabled) {
-        obsData.current.forEach((obs) => {
-          if (obs.follower && dragTarget.current !== obsData.current.indexOf(obs)) {
+        obsData.current.forEach((obs, i) => {
+          if (obs.follower && dragTarget.current !== i) {
             const dx = c.x + CUBE_SIZE / 2 - (obs.x + obs.size / 2)
             const dy = c.y + CUBE_SIZE / 2 - (obs.y + obs.size / 2)
             const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist > 5) {
+            const stopDist = (CUBE_SIZE + obs.size) / 2
+            if (dist > stopDist) {
               obs.x += (dx / dist) * 1.5
               obs.y += (dy / dist) * 1.5
+              obs.arrived = false
+            } else if (!obs.arrived) {
+              obs.arrived = true
+              obs.spinning = true
+              obs.spinStart = Date.now()
             }
           }
         })
@@ -121,7 +128,18 @@ export default function PhysicsPlayground() {
       // Update obstacle DOM positions
       obsData.current.forEach((obs, i) => {
         const el = obstacleRefs.current[i]
-        if (el) el.style.transform = `translate(${obs.x}px, ${obs.y}px)`
+        if (!el) return
+        let rotation = 0
+        if (obs.spinning) {
+          const elapsed = Date.now() - obs.spinStart
+          const duration = 600
+          if (elapsed < duration) {
+            rotation = (elapsed / duration) * 360
+          } else {
+            obs.spinning = false
+          }
+        }
+        el.style.transform = `translate(${obs.x}px, ${obs.y}px) rotate(${rotation}deg)`
       })
 
       raf = requestAnimationFrame(loop)
@@ -236,7 +254,7 @@ export default function PhysicsPlayground() {
     obs.y = t.clientY - obs.size / 2
   }
 
-  function onObsTouchEnd() {
+  function onObsTouchEnd(_e) {
     dragTarget.current = null
   }
 
@@ -276,12 +294,22 @@ export default function PhysicsPlayground() {
             width: obs.size, height: obs.size,
             zIndex: 9998, cursor: 'grab',
             userSelect: 'none', touchAction: 'none', willChange: 'transform',
-            borderRadius: 12,
-            backgroundColor: obs.color,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            borderRadius: obs.follower ? 6 : 12,
+            backgroundColor: obs.follower ? 'rgba(0, 20, 0, 0.85)' : obs.color,
+            boxShadow: obs.follower
+              ? '0 0 20px #00ff88, 0 0 40px #00ff4466, 0 8px 24px rgba(0,0,0,0.6)'
+              : '0 8px 24px rgba(0,0,0,0.5)',
             transform: `translate(${obs.x}px, ${obs.y}px)`,
+            display: obs.follower ? 'flex' : 'block',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: obs.follower ? obs.size * 0.72 : undefined,
+            lineHeight: 1,
+            border: obs.follower ? '2px solid #00ff8866' : 'none',
           }}
-        />
+        >
+          {obs.follower && '👾'}
+        </div>
       ))}
     </>
   )
