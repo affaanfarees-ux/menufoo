@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { collection, onSnapshot, query, where, and, or } from 'firebase/firestore'
+import { db } from '../firebase'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -20,6 +22,108 @@ const BORDER_PREVIEWS = {
   orange:  'border-[#3d1f00]',
   green:   'border-[#003d1a]',
   purple:  'border-[#25003d]',
+}
+
+function FriendSettings({ familyId }) {
+  const { setStudentApproval, respondToFriendRequest } = useAuth()
+  const [students, setStudents] = useState([])
+  const [pendingRequests, setPendingRequests] = useState([])
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'users'),
+      where('familyId', '==', familyId),
+      where('role', '==', 'student')
+    )
+    const unsub = onSnapshot(q, (snap) => {
+      setStudents(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    })
+    return unsub
+  }, [familyId])
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'friendRequests'),
+      and(
+        where('status', '==', 'pending'),
+        or(where('fromFamilyId', '==', familyId), where('toFamilyId', '==', familyId))
+      )
+    )
+    const unsub = onSnapshot(q, (snap) => {
+      const needsAction = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((r) =>
+          (r.fromFamilyId === familyId && !r.fromApproved) ||
+          (r.toFamilyId === familyId && !r.toApproved)
+        )
+      setPendingRequests(needsAction)
+    })
+    return unsub
+  }, [familyId])
+
+  if (students.length === 0) return null
+
+  return (
+    <div className="bg-[var(--surface)] rounded-2xl border border-green-400/20 p-6">
+      <h2 className="text-green-400 font-black text-sm uppercase tracking-widest mb-1">
+        Friend Requests
+      </h2>
+      <p className="text-green-300/50 text-xs mb-4">
+        Control whether each student needs your approval before connecting with a new friend.
+      </p>
+
+      <div className="flex flex-col gap-2 mb-2">
+        {students.map((student) => (
+          <div
+            key={student.id}
+            className="flex items-center justify-between bg-[#16213e] border border-green-400/20 rounded-lg px-4 py-3"
+          >
+            <span className="text-white font-semibold text-sm">{student.displayName}</span>
+            <button
+              onClick={() => setStudentApproval(student.id, !student.requireFriendApproval)}
+              className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
+                student.requireFriendApproval
+                  ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                  : 'bg-green-400/20 text-green-300 border border-green-400/40'
+              }`}
+            >
+              {student.requireFriendApproval ? 'Approval Required' : 'Automatic'}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {pendingRequests.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2">
+          <p className="text-green-300/70 text-xs font-bold uppercase tracking-wider">
+            Pending Approval
+          </p>
+          {pendingRequests.map((req) => (
+            <div key={req.id} className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-4 py-3">
+              <p className="text-white text-sm mb-2">
+                <span className="font-bold">{req.fromDisplayName}</span> wants to add{' '}
+                <span className="font-bold">{req.toDisplayName}</span> as a friend
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => respondToFriendRequest(req, true)}
+                  className="flex-1 bg-green-400 text-[#0f3460] font-bold text-xs py-2 rounded-lg hover:bg-green-300 transition-colors"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => respondToFriendRequest(req, false)}
+                  className="flex-1 bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs py-2 rounded-lg hover:bg-red-500/40 transition-colors"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Settings() {
@@ -57,6 +161,11 @@ export default function Settings() {
             <span className="text-green-300 text-xs font-bold">{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
+      )}
+
+      {/* Friend request controls (parent only) */}
+      {userProfile?.role === 'parent' && userProfile?.familyId && (
+        <FriendSettings familyId={userProfile.familyId} />
       )}
 
       {/* Background color */}

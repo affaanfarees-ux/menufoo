@@ -18,10 +18,23 @@ service cloud.firestore {
       return isSignedIn() && myProfile().role == 'parent';
     }
 
+    function isParentOf(uid) {
+      return isSignedIn() && myProfile().role == 'parent' &&
+        myFamilyId() == get(/databases/$(database)/documents/users/$(uid)).data.familyId;
+    }
+
+    function requiresApproval(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.requireFriendApproval == true;
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() &&
         (request.auth.uid == userId || resource.data.familyId == myFamilyId());
-      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() &&
+        (request.auth.uid == userId ||
+         (isParentOf(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requireFriendApproval'])));
       allow delete: if false;
     }
 
@@ -45,6 +58,55 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.familyId == myFamilyId();
       allow create, update: if isParent() && request.resource.data.familyId == myFamilyId();
       allow delete: if false;
+    }
+
+    match /friendCodes/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if isSignedIn() &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid ||
+         isParentOf(resource.data.fromUid) || isParentOf(resource.data.toUid));
+
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.fromUid &&
+        request.resource.data.toUid != request.auth.uid &&
+        request.resource.data.fromApproved == !requiresApproval(request.resource.data.fromUid) &&
+        request.resource.data.toApproved == !requiresApproval(request.resource.data.toUid) &&
+        request.resource.data.status ==
+          ((request.resource.data.fromApproved && request.resource.data.toApproved) ? 'accepted' : 'pending');
+
+      allow update: if isSignedIn() &&
+        (
+          (isParentOf(resource.data.fromUid) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fromApproved', 'status']) &&
+           (
+             (request.resource.data.fromApproved == true &&
+              request.resource.data.status == (resource.data.toApproved == true ? 'accepted' : 'pending')) ||
+             (request.resource.data.fromApproved == false && request.resource.data.status == 'rejected')
+           )) ||
+          (isParentOf(resource.data.toUid) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['toApproved', 'status']) &&
+           (
+             (request.resource.data.toApproved == true &&
+              request.resource.data.status == (resource.data.fromApproved == true ? 'accepted' : 'pending')) ||
+             (request.resource.data.toApproved == false && request.resource.data.status == 'rejected')
+           ))
+        );
+
+      allow delete: if false;
+    }
+
+    match /friendships/{friendshipId} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.uid1 || request.auth.uid == resource.data.uid2);
+      allow create: if isSignedIn() &&
+        (request.auth.uid == request.resource.data.uid1 || request.auth.uid == request.resource.data.uid2 ||
+         isParentOf(request.resource.data.uid1) || isParentOf(request.resource.data.uid2));
+      allow update, delete: if false;
     }
   }
 }
