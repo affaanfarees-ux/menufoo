@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -106,6 +107,7 @@ function LunchModal({ lunch, allUsers, onClose }) {
 }
 
 export default function Calendar() {
+  const { userProfile } = useAuth()
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
@@ -114,20 +116,24 @@ export default function Calendar() {
   const [selectedLunch, setSelectedLunch] = useState(null)
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'lunches'), (snap) => {
+    if (!userProfile?.familyId) return
+    const q = query(collection(db, 'lunches'), where('familyId', '==', userProfile.familyId))
+    const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
-  }, [])
+  }, [userProfile?.familyId])
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+    if (!userProfile?.familyId) return
+    const q = query(collection(db, 'users'), where('familyId', '==', userProfile.familyId))
+    const unsub = onSnapshot(q, (snap) => {
       const map = {}
       snap.docs.forEach((d) => { map[d.id] = d.data() })
       setAllUsers(map)
     })
     return unsub
-  }, [])
+  }, [userProfile?.familyId])
 
   // Build a map: "YYYY-MM-DD" → [lunch, ...]
   const lunchByDay = {}

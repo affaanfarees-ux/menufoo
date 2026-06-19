@@ -42,6 +42,40 @@ export function AuthProvider({ children }) {
     await fetchUserProfile(currentUser.uid)
   }
 
+  function generateFamilyCode() {
+    const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no 0/O/1/I/L
+    let code = ''
+    for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)]
+    return code
+  }
+
+  async function createFamily() {
+    let code
+    for (let attempts = 0; attempts < 5; attempts++) {
+      code = generateFamilyCode()
+      const snap = await getDoc(doc(db, 'families', code))
+      if (!snap.exists()) break
+    }
+    await setDoc(doc(db, 'families', code), {
+      code,
+      createdBy: currentUser.uid,
+      createdAt: new Date(),
+    })
+    await setDoc(doc(db, 'users', currentUser.uid), { familyId: code }, { merge: true })
+    await fetchUserProfile(currentUser.uid)
+    return code
+  }
+
+  async function joinFamily(code) {
+    const familyRef = doc(db, 'families', code)
+    const snap = await getDoc(familyRef)
+    if (!snap.exists()) {
+      throw new Error('not-found')
+    }
+    await setDoc(doc(db, 'users', currentUser.uid), { familyId: code }, { merge: true })
+    await fetchUserProfile(currentUser.uid)
+  }
+
   function logout() {
     return signOut(auth)
   }
@@ -71,6 +105,8 @@ export function AuthProvider({ children }) {
     userProfile,
     loginWithGoogle,
     setUserRole,
+    createFamily,
+    joinFamily,
     logout,
   }
 

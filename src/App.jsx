@@ -15,7 +15,7 @@ import Settings from './pages/Settings'
 function PrivateRoute({ children }) {
   const { currentUser, userProfile } = useAuth()
   if (!currentUser) return <Navigate to="/login" replace />
-  if (!userProfile?.role) return <Navigate to="/complete-profile" replace />
+  if (!userProfile?.role || !userProfile?.familyId) return <Navigate to="/complete-profile" replace />
   return children
 }
 
@@ -39,7 +39,7 @@ function AppRoutes() {
           element={
             !currentUser ? (
               <Navigate to="/login" replace />
-            ) : userProfile?.role ? (
+            ) : userProfile?.role && userProfile?.familyId ? (
               <Navigate to="/lunches" replace />
             ) : (
               <CompleteProfile />

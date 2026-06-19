@@ -6,26 +6,45 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myFamilyId() {
+      return myProfile().familyId;
+    }
+
     function isParent() {
-      return isSignedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+      return isSignedIn() && myProfile().role == 'parent';
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() &&
+        (request.auth.uid == userId || resource.data.familyId == myFamilyId());
       allow create, update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
 
-    match /lunches/{lunchId} {
+    match /families/{familyId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.code == familyId;
+      allow update, delete: if false;
+    }
+
+    match /lunches/{lunchId} {
+      allow read: if isSignedIn() && resource.data.familyId == myFamilyId();
+      allow create: if isSignedIn() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.familyId == myFamilyId();
+      allow update, delete: if isSignedIn() && resource.data.familyId == myFamilyId();
     }
 
     match /weeklyPlans/{planId} {
-      allow read: if isSignedIn();
-      allow write: if isParent();
+      allow read: if isSignedIn() && resource.data.familyId == myFamilyId();
+      allow create, update: if isParent() && request.resource.data.familyId == myFamilyId();
+      allow delete: if false;
     }
   }
 }

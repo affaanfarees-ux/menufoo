@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 const SWATCH_PREVIEWS = {
   default: 'bg-[#1a1a2e]',
@@ -22,6 +24,14 @@ const BORDER_PREVIEWS = {
 
 export default function Settings() {
   const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, specialObstacles, toggleSpecialObstacles } = useTheme()
+  const { userProfile } = useAuth()
+  const [copied, setCopied] = useState(false)
+
+  function copyCode() {
+    navigator.clipboard.writeText(userProfile.familyId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-6">
@@ -29,6 +39,25 @@ export default function Settings() {
         <h1 className="text-2xl font-black text-white mb-1">Settings</h1>
         <p className="text-green-300/60 text-sm">Customize how MenuFoo looks for you.</p>
       </div>
+
+      {/* Family code */}
+      {userProfile?.familyId && (
+        <div className="bg-[var(--surface)] rounded-2xl border border-green-400/20 p-6">
+          <h2 className="text-green-400 font-black text-sm uppercase tracking-widest mb-1">
+            Family
+          </h2>
+          <p className="text-green-300/50 text-xs mb-4">
+            Share this code so a parent or student can join your family.
+          </p>
+          <button
+            onClick={copyCode}
+            className="w-full flex items-center justify-between bg-[#16213e] border border-green-400/30 rounded-lg px-4 py-3 hover:border-green-400/60 transition-colors"
+          >
+            <span className="text-2xl font-black text-green-400 tracking-widest">{userProfile.familyId}</span>
+            <span className="text-green-300 text-xs font-bold">{copied ? 'Copied!' : 'Copy'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Background color */}
       <div className="bg-[var(--surface)] rounded-2xl border border-green-400/20 p-6">

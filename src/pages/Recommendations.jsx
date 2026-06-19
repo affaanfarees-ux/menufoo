@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
 
 function computeAvgRating(lunch) {
@@ -34,25 +35,33 @@ function computeComponentInsights(lunches, allUsers) {
 }
 
 export default function Recommendations() {
+  const { userProfile } = useAuth()
   const [lunches, setLunches] = useState([])
   const [allUsers, setAllUsers] = useState({})
 
   useEffect(() => {
-    const q = query(collection(db, 'lunches'), orderBy('date', 'desc'))
+    if (!userProfile?.familyId) return
+    const q = query(
+      collection(db, 'lunches'),
+      where('familyId', '==', userProfile.familyId),
+      orderBy('date', 'desc')
+    )
     const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
-  }, [])
+  }, [userProfile?.familyId])
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+    if (!userProfile?.familyId) return
+    const q = query(collection(db, 'users'), where('familyId', '==', userProfile.familyId))
+    const unsub = onSnapshot(q, (snap) => {
       const map = {}
       snap.docs.forEach((d) => { map[d.id] = d.data() })
       setAllUsers(map)
     })
     return unsub
-  }, [])
+  }, [userProfile?.familyId])
 
   const ranked = [...lunches]
     .filter((l) => Object.keys(l.ratings || {}).length > 0)

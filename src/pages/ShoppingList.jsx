@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../context/AuthContext'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
@@ -13,24 +14,29 @@ function getWeekKey() {
 }
 
 export default function ShoppingList() {
+  const { userProfile } = useAuth()
+  const familyId = userProfile?.familyId
   const [lunches, setLunches] = useState([])
   const [plan, setPlan] = useState({})
   const [checked, setChecked] = useState({})
   const weekKey = getWeekKey()
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'lunches'), (snap) => {
+    if (!familyId) return
+    const q = query(collection(db, 'lunches'), where('familyId', '==', familyId))
+    const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
-  }, [])
+  }, [familyId])
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'weeklyPlans', weekKey), (snap) => {
+    if (!familyId) return
+    const unsub = onSnapshot(doc(db, 'weeklyPlans', `${familyId}_${weekKey}`), (snap) => {
       if (snap.exists()) setPlan(snap.data())
     })
     return unsub
-  }, [weekKey])
+  }, [familyId, weekKey])
 
   function getLunch(id) {
     return lunches.find((l) => l.id === id)

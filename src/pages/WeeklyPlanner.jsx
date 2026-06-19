@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, doc, setDoc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, where, doc, setDoc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -20,20 +21,28 @@ function getWeekKey() {
 }
 
 export default function WeeklyPlanner() {
+  const { userProfile } = useAuth()
+  const familyId = userProfile?.familyId
   const [lunches, setLunches] = useState([])
   const [plan, setPlan] = useState({})
   const weekKey = getWeekKey()
-  const planRef = doc(db, 'weeklyPlans', weekKey)
+  const planRef = familyId ? doc(db, 'weeklyPlans', `${familyId}_${weekKey}`) : null
 
   useEffect(() => {
-    const q = query(collection(db, 'lunches'), orderBy('date', 'desc'))
+    if (!familyId) return
+    const q = query(
+      collection(db, 'lunches'),
+      where('familyId', '==', familyId),
+      orderBy('date', 'desc')
+    )
     const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
-  }, [])
+  }, [familyId])
 
   useEffect(() => {
+    if (!planRef) return
     getDoc(planRef).then((snap) => {
       if (snap.exists()) setPlan(snap.data())
     })
@@ -41,7 +50,7 @@ export default function WeeklyPlanner() {
       if (snap.exists()) setPlan(snap.data())
     })
     return unsub
-  }, [weekKey])
+  }, [familyId, weekKey])
 
   const ranked = [...lunches]
     .filter((l) => Object.keys(l.ratings || {}).length > 0)
@@ -51,14 +60,14 @@ export default function WeeklyPlanner() {
   async function assignLunch(day, lunchId) {
     const updated = { ...plan, [day]: lunchId }
     setPlan(updated)
-    await setDoc(planRef, updated)
+    await setDoc(planRef, { ...updated, familyId })
   }
 
   async function clearDay(day) {
     const updated = { ...plan }
     delete updated[day]
     setPlan(updated)
-    await setDoc(planRef, updated)
+    await setDoc(planRef, { ...updated, familyId })
   }
 
   function getLunch(lunchId) {

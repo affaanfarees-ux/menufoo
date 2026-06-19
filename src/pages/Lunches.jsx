@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, addDoc, onSnapshot, orderBy, query, doc, updateDoc, deleteDoc, Timestamp
+  collection, addDoc, onSnapshot, orderBy, query, where, doc, updateDoc, deleteDoc, Timestamp
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -325,21 +325,28 @@ export default function Lunches() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    const q = query(collection(db, 'lunches'), orderBy('date', 'desc'))
+    if (!userProfile?.familyId) return
+    const q = query(
+      collection(db, 'lunches'),
+      where('familyId', '==', userProfile.familyId),
+      orderBy('date', 'desc')
+    )
     const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
-  }, [])
+  }, [userProfile?.familyId])
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+    if (!userProfile?.familyId) return
+    const q = query(collection(db, 'users'), where('familyId', '==', userProfile.familyId))
+    const unsub = onSnapshot(q, (snap) => {
       const map = {}
       snap.docs.forEach((d) => { map[d.id] = d.data() })
       setAllUsers(map)
     })
     return unsub
-  }, [])
+  }, [userProfile?.familyId])
 
   function handleImageChange(e) {
     const file = e.target.files[0]
@@ -365,6 +372,7 @@ export default function Lunches() {
         components: [],
         ratings: {},
         createdBy: currentUser.uid,
+        familyId: userProfile.familyId,
         date: Timestamp.fromDate(new Date(date + 'T12:00:00')),
       })
       setName('')
