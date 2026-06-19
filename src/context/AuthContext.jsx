@@ -142,16 +142,22 @@ export function AuthProvider({ children }) {
       // friendCodes; it self-heals when that student reopens their Friends page.
       throw new Error('stale-code')
     }
-    const fromApproved = !userProfile.requireFriendApproval
+
+    // Read our own profile fresh rather than trusting cached userProfile state,
+    // since a parent toggling this from another session won't update our copy.
+    const myFreshSnap = await getDoc(doc(db, 'users', currentUser.uid))
+    const myFresh = myFreshSnap.data()
+
+    const fromApproved = !myFresh.requireFriendApproval
     const toApproved = !toInfo.requireFriendApproval
     const status = fromApproved && toApproved ? 'accepted' : 'pending'
 
     await addDoc(collection(db, 'friendRequests'), {
       fromUid: currentUser.uid,
       toUid,
-      fromDisplayName: userProfile.displayName,
+      fromDisplayName: myFresh.displayName,
       toDisplayName: toInfo.displayName,
-      fromFamilyId: userProfile.familyId,
+      fromFamilyId: myFresh.familyId,
       toFamilyId: toInfo.familyId,
       fromApproved,
       toApproved,
@@ -160,7 +166,7 @@ export function AuthProvider({ children }) {
     })
 
     if (status === 'accepted') {
-      await establishFriendship(currentUser.uid, userProfile.displayName, toUid, toInfo.displayName)
+      await establishFriendship(currentUser.uid, myFresh.displayName, toUid, toInfo.displayName)
     }
     return { status, displayName: toInfo.displayName }
   }
