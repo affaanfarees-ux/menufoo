@@ -5,7 +5,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, addDoc, updateDoc, collection } from 'firebase/firestore'
+import { doc, setDoc, getDoc, getDocs, addDoc, updateDoc, collection, query, where } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
 const AuthContext = createContext()
@@ -84,7 +84,19 @@ export function AuthProvider({ children }) {
   }
 
   async function ensureFriendCode() {
-    if (userProfile?.friendCode) return userProfile.friendCode
+    if (userProfile?.friendCode) {
+      // Re-sync the lookup doc every time, so it self-heals for codes created
+      // before familyId/requireFriendApproval were added, and stays current if
+      // requireFriendApproval drifts (e.g. parent toggles it from Settings while
+      // this client wasn't connected to receive the friendCodes write directly).
+      await setDoc(doc(db, 'friendCodes', userProfile.friendCode), {
+        uid: currentUser.uid,
+        displayName: userProfile.displayName,
+        familyId: userProfile.familyId,
+        requireFriendApproval: !!userProfile.requireFriendApproval,
+      }, { merge: true })
+      return userProfile.friendCode
+    }
     let code
     for (let attempts = 0; attempts < 5; attempts++) {
       code = generateFriendCode()
@@ -94,6 +106,8 @@ export function AuthProvider({ children }) {
     await setDoc(doc(db, 'friendCodes', code), {
       uid: currentUser.uid,
       displayName: userProfile.displayName,
+      familyId: userProfile.familyId,
+      requireFriendApproval: !!userProfile.requireFriendApproval,
       createdAt: new Date(),
     })
     await setDoc(doc(db, 'users', currentUser.uid), { friendCode: code }, { merge: true })
@@ -118,23 +132,22 @@ export function AuthProvider({ children }) {
     if (!codeSnap.exists()) {
       throw new Error('not-found')
     }
-    const toUid = codeSnap.data().uid
+    const toInfo = codeSnap.data()
+    const toUid = toInfo.uid
     if (toUid === currentUser.uid) {
       throw new Error('self')
     }
-    const toProfileSnap = await getDoc(doc(db, 'users', toUid))
-    const toProfile = toProfileSnap.data()
     const fromApproved = !userProfile.requireFriendApproval
-    const toApproved = !toProfile.requireFriendApproval
+    const toApproved = !toInfo.requireFriendApproval
     const status = fromApproved && toApproved ? 'accepted' : 'pending'
 
     await addDoc(collection(db, 'friendRequests'), {
       fromUid: currentUser.uid,
       toUid,
       fromDisplayName: userProfile.displayName,
-      toDisplayName: toProfile.displayName,
+      toDisplayName: toInfo.displayName,
       fromFamilyId: userProfile.familyId,
-      toFamilyId: toProfile.familyId,
+      toFamilyId: toInfo.familyId,
       fromApproved,
       toApproved,
       status,
@@ -142,9 +155,9 @@ export function AuthProvider({ children }) {
     })
 
     if (status === 'accepted') {
-      await establishFriendship(currentUser.uid, userProfile.displayName, toUid, toProfile.displayName)
+      await establishFriendship(currentUser.uid, userProfile.displayName, toUid, toInfo.displayName)
     }
-    return { status, displayName: toProfile.displayName }
+    return { status, displayName: toInfo.displayName }
   }
 
   async function respondToFriendRequest(request, approve) {
@@ -164,19 +177,19 @@ export function AuthProvider({ children }) {
     })
 
     if (nowAccepted) {
-      const [fromSnap, toSnap] = await Promise.all([
-        getDoc(doc(db, 'users', request.fromUid)),
-        getDoc(doc(db, 'users', request.toUid)),
-      ])
       await establishFriendship(
-        request.fromUid, fromSnap.data().displayName,
-        request.toUid, toSnap.data().displayName
+        request.fromUid, request.fromDisplayName,
+        request.toUid, request.toDisplayName
       )
     }
   }
 
   async function setStudentApproval(studentUid, requireApproval) {
     await updateDoc(doc(db, 'users', studentUid), { requireFriendApproval: requireApproval })
+    const codeSnap = await getDocs(query(collection(db, 'friendCodes'), where('uid', '==', studentUid)))
+    await Promise.all(codeSnap.docs.map((d) =>
+      updateDoc(doc(db, 'friendCodes', d.id), { requireFriendApproval: requireApproval })
+    ))
   }
 
   function logout() {
