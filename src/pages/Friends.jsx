@@ -14,10 +14,13 @@ export default function Friends() {
   const requestedCodeRef = useRef(false)
 
   useEffect(() => {
-    if (friendCode || requestedCodeRef.current) return
+    // Always call this on mount, even if a code already exists -- ensureFriendCode
+    // resyncs familyId/requireFriendApproval onto the existing code every time,
+    // not just on first creation.
+    if (requestedCodeRef.current) return
     requestedCodeRef.current = true
     ensureFriendCode()
-  }, [friendCode, ensureFriendCode])
+  }, [ensureFriendCode])
 
   useEffect(() => {
     const q = query(
