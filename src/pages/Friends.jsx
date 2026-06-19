@@ -48,10 +48,11 @@ export default function Friends() {
           : { type: 'success', text: `Friend request sent to ${displayName}. Waiting on approval.` }
       )
     } catch (err) {
+      console.error('sendFriendRequest failed:', err)
       const text =
         err.message === 'self' ? "That's your own code!" :
         err.message === 'not-found' ? 'Invalid or expired QR code.' :
-        'Could not send friend request. Please try again.'
+        `Could not send friend request. (debug: ${err.code || err.message || err})`
       setMessage({ type: 'error', text })
     }
   }, [sendFriendRequest])
