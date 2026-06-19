@@ -11,6 +11,7 @@ import Recommendations from './pages/Recommendations'
 import WeeklyPlanner from './pages/WeeklyPlanner'
 import ShoppingList from './pages/ShoppingList'
 import Settings from './pages/Settings'
+import Friends from './pages/Friends'
 
 function PrivateRoute({ children }) {
   const { currentUser, userProfile } = useAuth()
@@ -23,6 +24,12 @@ function ParentRoute({ children }) {
   const { userProfile } = useAuth()
   if (!userProfile) return null
   return userProfile.role === 'parent' ? children : <Navigate to="/lunches" replace />
+}
+
+function StudentRoute({ children }) {
+  const { userProfile } = useAuth()
+  if (!userProfile) return null
+  return userProfile.role === 'student' ? children : <Navigate to="/lunches" replace />
 }
 
 function AppRoutes() {
@@ -60,6 +67,7 @@ function AppRoutes() {
                     <Route path="/recommend" element={<Recommendations />} />
                     <Route path="/planner" element={<ParentRoute><WeeklyPlanner /></ParentRoute>} />
                     <Route path="/shopping" element={<ParentRoute><ShoppingList /></ParentRoute>} />
+                    <Route path="/friends" element={<StudentRoute><Friends /></StudentRoute>} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/lunches" replace />} />
                   </Routes>
