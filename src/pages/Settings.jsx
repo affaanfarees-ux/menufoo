@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, query, where, and, or } from 'firebase/firestore'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
@@ -37,28 +37,45 @@ function FriendSettings({ familyId }) {
     )
     const unsub = onSnapshot(q, (snap) => {
       setStudents(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    })
+    }, (err) => console.error('Failed to load students:', err))
     return unsub
   }, [familyId])
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'friendRequests'),
-      and(
-        where('status', '==', 'pending'),
-        or(where('fromFamilyId', '==', familyId), where('toFamilyId', '==', familyId))
+    // Two plain equality queries merged client-side, rather than one and(or(...))
+    // query — Firestore's or() composite filters often require a manually
+    // created index, while multi-field equality-only queries don't.
+    const results = { from: [], to: [] }
+    function recompute() {
+      const merged = new Map()
+      ;[...results.from, ...results.to].forEach((r) => merged.set(r.id, r))
+      const needsAction = [...merged.values()].filter((r) =>
+        (r.fromFamilyId === familyId && !r.fromApproved) ||
+        (r.toFamilyId === familyId && !r.toApproved)
       )
-    )
-    const unsub = onSnapshot(q, (snap) => {
-      const needsAction = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((r) =>
-          (r.fromFamilyId === familyId && !r.fromApproved) ||
-          (r.toFamilyId === familyId && !r.toApproved)
-        )
       setPendingRequests(needsAction)
-    })
-    return unsub
+    }
+
+    const qFrom = query(
+      collection(db, 'friendRequests'),
+      where('status', '==', 'pending'),
+      where('fromFamilyId', '==', familyId)
+    )
+    const qTo = query(
+      collection(db, 'friendRequests'),
+      where('status', '==', 'pending'),
+      where('toFamilyId', '==', familyId)
+    )
+    const unsubFrom = onSnapshot(qFrom, (snap) => {
+      results.from = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      recompute()
+    }, (err) => console.error('Failed to load pending friend requests (from side):', err))
+    const unsubTo = onSnapshot(qTo, (snap) => {
+      results.to = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      recompute()
+    }, (err) => console.error('Failed to load pending friend requests (to side):', err))
+
+    return () => { unsubFrom(); unsubTo() }
   }, [familyId])
 
   if (students.length === 0) return null
