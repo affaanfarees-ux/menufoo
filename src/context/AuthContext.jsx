@@ -137,6 +137,11 @@ export function AuthProvider({ children }) {
     if (toUid === currentUser.uid) {
       throw new Error('self')
     }
+    if (toInfo.familyId === undefined || toInfo.requireFriendApproval === undefined) {
+      // Code was generated before familyId/requireFriendApproval were added to
+      // friendCodes; it self-heals when that student reopens their Friends page.
+      throw new Error('stale-code')
+    }
     const fromApproved = !userProfile.requireFriendApproval
     const toApproved = !toInfo.requireFriendApproval
     const status = fromApproved && toApproved ? 'accepted' : 'pending'
