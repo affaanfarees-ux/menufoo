@@ -4,7 +4,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import PhysicsCube from './components/PhysicsCube'
 import Login from './pages/Login'
-import Signup from './pages/Signup'
+import CompleteProfile from './pages/CompleteProfile'
 import Lunches from './pages/Lunches'
 import Calendar from './pages/Calendar'
 import Recommendations from './pages/Recommendations'
@@ -13,8 +13,10 @@ import ShoppingList from './pages/ShoppingList'
 import Settings from './pages/Settings'
 
 function PrivateRoute({ children }) {
-  const { currentUser } = useAuth()
-  return currentUser ? children : <Navigate to="/login" replace />
+  const { currentUser, userProfile } = useAuth()
+  if (!currentUser) return <Navigate to="/login" replace />
+  if (!userProfile?.role) return <Navigate to="/complete-profile" replace />
+  return children
 }
 
 function ParentRoute({ children }) {
@@ -24,7 +26,7 @@ function ParentRoute({ children }) {
 }
 
 function AppRoutes() {
-  const { currentUser } = useAuth()
+  const { currentUser, userProfile } = useAuth()
   const { cubeEnabled, obstaclesEnabled } = useTheme()
 
   return (
@@ -32,7 +34,18 @@ function AppRoutes() {
       {(cubeEnabled || obstaclesEnabled) && <PhysicsCube />}
       <Routes>
         <Route path="/login" element={currentUser ? <Navigate to="/lunches" /> : <Login />} />
-        <Route path="/signup" element={currentUser ? <Navigate to="/lunches" /> : <Signup />} />
+        <Route
+          path="/complete-profile"
+          element={
+            !currentUser ? (
+              <Navigate to="/login" replace />
+            ) : userProfile?.role ? (
+              <Navigate to="/lunches" replace />
+            ) : (
+              <CompleteProfile />
+            )
+          }
+        />
 
         <Route
           path="/*"

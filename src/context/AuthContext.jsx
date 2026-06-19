@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   signOut,
   onAuthStateChanged,
-  updateProfile,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
@@ -20,20 +19,27 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  async function signup(email, password, displayName, role) {
-    const result = await createUserWithEmailAndPassword(auth, email, password)
-    await updateProfile(result.user, { displayName })
-    await setDoc(doc(db, 'users', result.user.uid), {
-      displayName,
-      email,
-      role, // 'student' | 'parent'
-      createdAt: new Date(),
-    })
+  async function loginWithGoogle() {
+    const provider = new GoogleAuthProvider()
+    const result = await signInWithPopup(auth, provider)
+    const userRef = doc(db, 'users', result.user.uid)
+    const snap = await getDoc(userRef)
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+        role: null, // chosen on /complete-profile
+        createdAt: new Date(),
+      })
+    }
+    await fetchUserProfile(result.user.uid)
     return result
   }
 
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password)
+  async function setUserRole(role) {
+    await setDoc(doc(db, 'users', currentUser.uid), { role }, { merge: true })
+    await fetchUserProfile(currentUser.uid)
   }
 
   function logout() {
@@ -63,8 +69,8 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     userProfile,
-    signup,
-    login,
+    loginWithGoogle,
+    setUserRole,
     logout,
   }
 
