@@ -1,5 +1,5 @@
 rules_version = '2';
-// republish-marker: 2026-06-20
+// republish-marker: 2026-06-20-01
 service cloud.firestore {
   match /databases/{database}/documents {
 
