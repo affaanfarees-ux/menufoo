@@ -76,6 +76,14 @@ export function AuthProvider({ children }) {
     await fetchUserProfile(currentUser.uid)
   }
 
+  async function setGuardianInfo({ relationship, isPrimaryGuardian }) {
+    await setDoc(doc(db, 'users', currentUser.uid), {
+      relationship: relationship || null,
+      isPrimaryGuardian: !!isPrimaryGuardian,
+    }, { merge: true })
+    await fetchUserProfile(currentUser.uid)
+  }
+
   function generateFriendCode() {
     const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no 0/O/1/I/L
     let code = ''
@@ -249,6 +257,7 @@ export function AuthProvider({ children }) {
     setUserRole,
     createFamily,
     joinFamily,
+    setGuardianInfo,
     ensureFriendCode,
     sendFriendRequest,
     respondToFriendRequest,

@@ -3,6 +3,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { RELATIONSHIP_OPTIONS } from '../constants/family'
 
 const SWATCH_PREVIEWS = {
   default: 'bg-[#1a1a2e]',
@@ -22,6 +23,64 @@ const BORDER_PREVIEWS = {
   orange:  'border-[#3d1f00]',
   green:   'border-[#003d1a]',
   purple:  'border-[#25003d]',
+}
+
+function GuardianInfo({ userProfile }) {
+  const { setGuardianInfo } = useAuth()
+  const [relationship, setRelationship] = useState(userProfile.relationship || '')
+  const [isPrimaryGuardian, setIsPrimaryGuardian] = useState(!!userProfile.isPrimaryGuardian)
+  const [saved, setSaved] = useState(false)
+
+  async function save(next) {
+    setSaved(false)
+    await setGuardianInfo(next)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1500)
+  }
+
+  return (
+    <div className="bg-[var(--surface)] rounded-2xl border border-green-400/20 p-6">
+      <h2 className="text-green-400 font-black text-sm uppercase tracking-widest mb-1">
+        Guardian Info
+      </h2>
+      <p className="text-green-300/50 text-xs mb-4">
+        Optional — helps with assigning responsibilities by relationship later.
+      </p>
+      <div className="flex flex-col gap-3">
+        <div>
+          <label className="block text-green-300 text-sm font-semibold mb-1">
+            Your relationship to the kids
+          </label>
+          <select
+            value={relationship}
+            onChange={(e) => {
+              setRelationship(e.target.value)
+              save({ relationship: e.target.value, isPrimaryGuardian })
+            }}
+            className="w-full bg-[#16213e] border border-green-400/30 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-green-400 transition-colors"
+          >
+            <option value="">Prefer not to say</option>
+            {RELATIONSHIP_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-green-300 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isPrimaryGuardian}
+            onChange={(e) => {
+              setIsPrimaryGuardian(e.target.checked)
+              save({ relationship, isPrimaryGuardian: e.target.checked })
+            }}
+            className="w-4 h-4 accent-green-400"
+          />
+          I'm the primary guardian
+          {saved && <span className="text-green-400 text-xs ml-2">Saved!</span>}
+        </label>
+      </div>
+    </div>
+  )
 }
 
 function FriendSettings({ familyId }) {
@@ -168,7 +227,7 @@ export default function Settings() {
             Family
           </h2>
           <p className="text-green-300/50 text-xs mb-4">
-            Share this code so a parent or student can join your family.
+            Share this code so a guardian or student can join your family.
           </p>
           <button
             onClick={copyCode}
@@ -178,6 +237,11 @@ export default function Settings() {
             <span className="text-green-300 text-xs font-bold">{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
+      )}
+
+      {/* Guardian info (parent only) */}
+      {userProfile?.role === 'parent' && (
+        <GuardianInfo userProfile={userProfile} />
       )}
 
       {/* Friend request controls (parent only) */}

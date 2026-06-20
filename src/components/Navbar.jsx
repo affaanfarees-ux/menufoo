@@ -18,6 +18,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const role = userProfile?.role
+  const roleLabel = role === 'parent' ? 'guardian' : role
   const visible = navItems.filter((item) => item.roles.includes(role))
 
   function closeMenu() { setMenuOpen(false) }
@@ -47,7 +48,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3 ml-2 border-l border-green-400/30 pl-3">
             <span className="text-green-300 text-sm font-semibold">
               {userProfile?.displayName}
-              <span className="ml-1 text-xs text-green-500 opacity-70">({role})</span>
+              <span className="ml-1 text-xs text-green-500 opacity-70">({roleLabel})</span>
             </span>
             <button
               onClick={logout}
@@ -90,7 +91,7 @@ export default function Navbar() {
           <div className="border-t border-green-400/20 pt-2 mt-1 flex items-center justify-between">
             <span className="text-green-300 text-sm font-semibold">
               {userProfile?.displayName}
-              <span className="ml-1 text-xs text-green-500 opacity-70">({role})</span>
+              <span className="ml-1 text-xs text-green-500 opacity-70">({roleLabel})</span>
             </span>
             <button
               onClick={() => { closeMenu(); logout() }}
