@@ -323,6 +323,7 @@ export default function Lunches() {
   const [image, setImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [loadingLunches, setLoadingLunches] = useState(true)
 
   useEffect(() => {
     if (!userProfile?.familyId) return
@@ -333,6 +334,10 @@ export default function Lunches() {
     )
     const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoadingLunches(false)
+    }, (err) => {
+      console.error('Failed to load lunches:', err)
+      setLoadingLunches(false)
     })
     return unsub
   }, [userProfile?.familyId])
@@ -344,7 +349,7 @@ export default function Lunches() {
       const map = {}
       snap.docs.forEach((d) => { map[d.id] = d.data() })
       setAllUsers(map)
-    })
+    }, (err) => console.error('Failed to load family members:', err))
     return unsub
   }, [userProfile?.familyId])
 
@@ -452,7 +457,11 @@ export default function Lunches() {
         </form>
       )}
 
-      {lunches.length === 0 && (
+      {loadingLunches ? (
+        <div className="text-center py-16 text-green-300/40">
+          <p className="font-semibold">Loading lunches...</p>
+        </div>
+      ) : lunches.length === 0 && (
         <div className="text-center py-16 text-green-300/40">
           <p className="text-5xl mb-3">🍱</p>
           <p className="font-semibold">No lunches yet. Log your first one!</p>

@@ -48,7 +48,7 @@ export default function Recommendations() {
     )
     const unsub = onSnapshot(q, (snap) => {
       setLunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    })
+    }, (err) => console.error('Failed to load lunches:', err))
     return unsub
   }, [userProfile?.familyId])
 
@@ -59,7 +59,7 @@ export default function Recommendations() {
       const map = {}
       snap.docs.forEach((d) => { map[d.id] = d.data() })
       setAllUsers(map)
-    })
+    }, (err) => console.error('Failed to load family members:', err))
     return unsub
   }, [userProfile?.familyId])
 
