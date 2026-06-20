@@ -56,7 +56,7 @@ export default function Friends() {
         err.message === 'self' ? "That's your own code!" :
         err.message === 'not-found' ? 'Invalid or expired QR code.' :
         err.message === 'stale-code' ? "This friend's code needs refreshing — ask them to reopen their Friends page, then scan again." :
-        `Could not send friend request. (${err.code || err.message || 'unknown error'}) ${err.debugInfo || ''}`
+        'Could not send friend request. Please try again.'
       setMessage({ type: 'error', text })
     }
   }, [sendFriendRequest])
