@@ -152,7 +152,7 @@ export function AuthProvider({ children }) {
     const toApproved = !toInfo.requireFriendApproval
     const status = fromApproved && toApproved ? 'accepted' : 'pending'
 
-    await addDoc(collection(db, 'friendRequests'), {
+    const payload = {
       fromUid: currentUser.uid,
       toUid,
       fromDisplayName: myFresh.displayName,
@@ -163,7 +163,18 @@ export function AuthProvider({ children }) {
       toApproved,
       status,
       createdAt: new Date(),
-    })
+    }
+    try {
+      await addDoc(collection(db, 'friendRequests'), payload)
+    } catch (err) {
+      err.debugInfo = JSON.stringify({
+        ...payload,
+        createdAt: undefined,
+        myFresh_requireFriendApproval: myFresh.requireFriendApproval,
+        toInfo_requireFriendApproval: toInfo.requireFriendApproval,
+      })
+      throw err
+    }
 
     if (status === 'accepted') {
       await establishFriendship(currentUser.uid, myFresh.displayName, toUid, toInfo.displayName)
