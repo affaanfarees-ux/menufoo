@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://api.github.com/*\")",
+      "Bash(npm run lint)",
+      "Bash(where *)",
+      "Bash(sleep *)"
+    ]
+  }
+}
