@@ -30,6 +30,7 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
   const [photoPreview, setPhotoPreview] = useState(null)
 
   const isParent = userProfile?.role === 'parent'
+  const canRate = !isParent
   const isCreator = lunch.createdBy === currentUser.uid
   const canEdit = isCreator || isParent
   const lunchRef = doc(db, 'lunches', lunch.id)
@@ -176,10 +177,12 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
 
         {/* Ratings */}
         <div className="flex items-center gap-3 mb-3">
-          <div>
-            <p className="text-xs text-green-300/60 mb-0.5">Your rating</p>
-            <StarRating value={myRating} onChange={rateOverall} />
-          </div>
+          {canRate && (
+            <div>
+              <p className="text-xs text-green-300/60 mb-0.5">Your rating</p>
+              <StarRating value={myRating} onChange={rateOverall} />
+            </div>
+          )}
           {avgRating && (
             <div className="ml-auto text-right">
               <p className="text-xs text-green-300/60 mb-0.5">Avg</p>
@@ -237,20 +240,23 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    {Object.entries(lunch.ratings || {}).map(([uid, r]) => (
-                      <div key={uid} className="flex items-center gap-2">
-                        <span className="text-xs text-green-300/50 w-20 truncate">
-                          {allUsers[uid]?.displayName || 'Unknown'}
-                        </span>
-                        <StarRating
-                          value={r.components?.[comp.id] || 0}
-                          onChange={uid === currentUser.uid ? (s) => rateComponent(comp.id, s) : undefined}
-                          readonly={uid !== currentUser.uid}
-                          size="sm"
-                        />
-                      </div>
-                    ))}
-                    {!lunch.ratings?.[currentUser.uid] && (
+                    {Object.entries(lunch.ratings || {}).map(([uid, r]) => {
+                      const isMine = uid === currentUser.uid
+                      return (
+                        <div key={uid} className="flex items-center gap-2">
+                          <span className="text-xs text-green-300/50 w-20 truncate">
+                            {allUsers[uid]?.displayName || 'Unknown'}
+                          </span>
+                          <StarRating
+                            value={r.components?.[comp.id] || 0}
+                            onChange={isMine && canRate ? (s) => rateComponent(comp.id, s) : undefined}
+                            readonly={!isMine || !canRate}
+                            size="sm"
+                          />
+                        </div>
+                      )
+                    })}
+                    {!lunch.ratings?.[currentUser.uid] && canRate && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-green-300/50 w-20 truncate">
                           {userProfile?.displayName}
