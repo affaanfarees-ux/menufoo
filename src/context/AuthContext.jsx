@@ -148,8 +148,23 @@ export function AuthProvider({ children }) {
     const myFreshSnap = await getDoc(doc(db, 'users', currentUser.uid))
     const myFresh = myFreshSnap.data()
 
+    // If the other student is in our own family, we're allowed to read their
+    // live profile directly -- prefer that over the friendCodes cache, which
+    // only refreshes when they themselves visit their Friends page.
+    let toRequireApproval = toInfo.requireFriendApproval
+    if (toInfo.familyId === myFresh.familyId) {
+      try {
+        const toLiveSnap = await getDoc(doc(db, 'users', toUid))
+        if (toLiveSnap.exists()) {
+          toRequireApproval = !!toLiveSnap.data().requireFriendApproval
+        }
+      } catch {
+        // fall back to the cached value below
+      }
+    }
+
     const fromApproved = !myFresh.requireFriendApproval
-    const toApproved = !toInfo.requireFriendApproval
+    const toApproved = !toRequireApproval
     const status = fromApproved && toApproved ? 'accepted' : 'pending'
 
     const payload = {
