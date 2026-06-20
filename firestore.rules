@@ -1,4 +1,5 @@
 rules_version = '2';
+// republish-marker: 2026-06-20
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -11,20 +12,22 @@ service cloud.firestore {
     }
 
     function myFamilyId() {
-      return myProfile().familyId;
+      return myProfile().get('familyId', null);
     }
 
     function isParent() {
-      return isSignedIn() && myProfile().role == 'parent';
+      return isSignedIn() && myProfile().get('role', null) == 'parent';
     }
 
     function isParentOf(uid) {
-      return isSignedIn() && myProfile().role == 'parent' &&
-        myFamilyId() == get(/databases/$(database)/documents/users/$(uid)).data.familyId;
+      return isSignedIn() && myProfile().get('role', null) == 'parent' &&
+        myFamilyId() == get(/databases/$(database)/documents/users/$(uid)).data.get('familyId', null);
     }
 
     function requiresApproval(uid) {
-      return get(/databases/$(database)/documents/users/$(uid)).data.requireFriendApproval == true;
+      // .get(field, default) avoids an evaluation error when a user has never
+      // had requireFriendApproval explicitly set (e.g. left on default/Automatic).
+      return get(/databases/$(database)/documents/users/$(uid)).data.get('requireFriendApproval', false) == true;
     }
 
     match /users/{userId} {
