@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   collection, addDoc, onSnapshot, orderBy, query, where, doc, updateDoc, deleteDoc, Timestamp
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
@@ -97,6 +97,15 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
       console.error(err)
     }
     setUploadingPhoto(false)
+  }
+
+  async function deletePhoto() {
+    if (!window.confirm('Remove this photo?')) return
+    if (lunch.imageUrl) {
+      await deleteObject(ref(storage, lunch.imageUrl)).catch(() => {})
+    }
+    await updateDoc(lunchRef, { imageUrl: null })
+    setPhotoPreview(null)
   }
 
   async function deleteLunch() {
@@ -219,6 +228,14 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
                   className="hidden"
                 />
               </label>
+              {lunch.imageUrl && canEdit && !uploadingPhoto && (
+                <button
+                  onClick={deletePhoto}
+                  className="ml-2 text-red-400/60 hover:text-red-400 text-sm font-bold"
+                >
+                  ✕ Remove Photo
+                </button>
+              )}
             </div>
 
             <h4 className="text-green-300 font-bold text-sm mb-2">Food Items</h4>
