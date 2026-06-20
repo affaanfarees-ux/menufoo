@@ -20,19 +20,20 @@ service cloud.firestore {
     }
 
     function isParentOf(uid) {
-      return isSignedIn() && myProfile().get('role', null) == 'parent' &&
+      return uid != null && isSignedIn() && myProfile().get('role', null) == 'parent' &&
         myFamilyId() == get(/databases/$(database)/documents/users/$(uid)).data.get('familyId', null);
     }
 
     function requiresApproval(uid) {
       // .get(field, default) avoids an evaluation error when a user has never
       // had requireFriendApproval explicitly set (e.g. left on default/Automatic).
-      return get(/databases/$(database)/documents/users/$(uid)).data.get('requireFriendApproval', false) == true;
+      return uid != null &&
+        get(/databases/$(database)/documents/users/$(uid)).data.get('requireFriendApproval', false) == true;
     }
 
     match /users/{userId} {
       allow read: if isSignedIn() &&
-        (request.auth.uid == userId || resource.data.familyId == myFamilyId());
+        (request.auth.uid == userId || resource.data.get('familyId', null) == myFamilyId());
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn() &&
         (request.auth.uid == userId ||
@@ -50,15 +51,15 @@ service cloud.firestore {
     }
 
     match /lunches/{lunchId} {
-      allow read: if isSignedIn() && resource.data.familyId == myFamilyId();
+      allow read: if isSignedIn() && resource.data.get('familyId', null) == myFamilyId();
       allow create: if isSignedIn() &&
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.familyId == myFamilyId();
-      allow update, delete: if isSignedIn() && resource.data.familyId == myFamilyId();
+      allow update, delete: if isSignedIn() && resource.data.get('familyId', null) == myFamilyId();
     }
 
     match /weeklyPlans/{planId} {
-      allow read: if isSignedIn() && resource.data.familyId == myFamilyId();
+      allow read: if isSignedIn() && resource.data.get('familyId', null) == myFamilyId();
       allow create, update: if isParent() && request.resource.data.familyId == myFamilyId();
       allow delete: if false;
     }
@@ -75,9 +76,16 @@ service cloud.firestore {
     }
 
     match /friendRequests/{requestId} {
+      // Note: avoids isParentOf(resource.data.X) here -- list/query reads are
+      // authorized using only request-constant values (our own uid/role/family)
+      // compared against document fields, not a per-document cross-reference
+      // into another document, which Firestore can't validate for list ops.
       allow read: if isSignedIn() &&
-        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid ||
-         isParentOf(resource.data.fromUid) || isParentOf(resource.data.toUid));
+        (resource.data.get('fromUid', null) == request.auth.uid ||
+         resource.data.get('toUid', null) == request.auth.uid ||
+         (myProfile().get('role', null) == 'parent' &&
+          (resource.data.get('fromFamilyId', null) == myFamilyId() ||
+           resource.data.get('toFamilyId', null) == myFamilyId())));
 
       allow create: if isSignedIn() &&
         request.auth.uid == request.resource.data.fromUid &&
@@ -89,18 +97,18 @@ service cloud.firestore {
 
       allow update: if isSignedIn() &&
         (
-          (isParentOf(resource.data.fromUid) &&
+          (isParentOf(resource.data.get('fromUid', null)) &&
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fromApproved', 'status']) &&
            (
              (request.resource.data.fromApproved == true &&
-              request.resource.data.status == (resource.data.toApproved == true ? 'accepted' : 'pending')) ||
+              request.resource.data.status == (resource.data.get('toApproved', false) == true ? 'accepted' : 'pending')) ||
              (request.resource.data.fromApproved == false && request.resource.data.status == 'rejected')
            )) ||
-          (isParentOf(resource.data.toUid) &&
+          (isParentOf(resource.data.get('toUid', null)) &&
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['toApproved', 'status']) &&
            (
              (request.resource.data.toApproved == true &&
-              request.resource.data.status == (resource.data.fromApproved == true ? 'accepted' : 'pending')) ||
+              request.resource.data.status == (resource.data.get('fromApproved', false) == true ? 'accepted' : 'pending')) ||
              (request.resource.data.toApproved == false && request.resource.data.status == 'rejected')
            ))
         );
@@ -110,7 +118,7 @@ service cloud.firestore {
 
     match /friendships/{friendshipId} {
       allow read: if isSignedIn() &&
-        (request.auth.uid == resource.data.uid1 || request.auth.uid == resource.data.uid2);
+        (request.auth.uid == resource.data.get('uid1', null) || request.auth.uid == resource.data.get('uid2', null));
       allow create: if isSignedIn() &&
         (request.auth.uid == request.resource.data.uid1 || request.auth.uid == request.resource.data.uid2 ||
          isParentOf(request.resource.data.uid1) || isParentOf(request.resource.data.uid2));
