@@ -40,3 +40,89 @@ body {
   90%  { opacity: 0.5; }
   100% { transform: translateY(500px) rotate(360deg); opacity: 0; }
 }
+
+/* Mega star */
+.mega-star-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.mega-star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.7rem;
+  line-height: 1;
+  padding: 0 2px;
+  color: #55607a;
+  transition: transform 0.15s, color 0.2s;
+}
+.mega-star-btn:hover {
+  transform: scale(1.15);
+}
+.mega-star-btn.active {
+  color: #ffd700;
+  animation: megaGlow 1.6s ease-in-out infinite;
+}
+@keyframes megaGlow {
+  0%, 100% { text-shadow: 0 0 6px #ffd700, 0 0 12px #ffae00; }
+  50%      { text-shadow: 0 0 16px #fff59d, 0 0 28px #ffae00; }
+}
+.mega-particle {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  pointer-events: none;
+  font-size: 0.75rem;
+  color: #ffd700;
+  animation: megaFall 900ms ease-in forwards;
+}
+@keyframes megaFall {
+  0%   { transform: translate(-50%, -50%) scale(1);        opacity: 1; }
+  100% { transform: translate(var(--dx, 0px), 34px) scale(0.4); opacity: 0; }
+}
+
+/* Bonk mode impact text */
+.bonk-text {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 1.25rem;
+  color: #fff566;
+  text-shadow: -2px 0 #1a1a2e, 2px 0 #1a1a2e, 0 -2px #1a1a2e, 0 2px #1a1a2e, 0 3px 8px rgba(0,0,0,0.5);
+  animation: bonkPop 700ms ease-out forwards;
+}
+@keyframes bonkPop {
+  0%   { transform: translate(-50%, -50%) scale(0.4) rotate(-8deg); opacity: 0; }
+  30%  { transform: translate(-50%, -70%) scale(1.2) rotate(4deg);  opacity: 1; }
+  100% { transform: translate(-50%, -120%) scale(1) rotate(0deg);   opacity: 0; }
+}
+
+/* Secret panel (Settings easter egg) */
+.egg-panel {
+  transition: transform 0.5s ease-in;
+  transform-origin: 100% 0%; /* pivots on the top-right screw */
+}
+.egg-panel.swinging {
+  transform: rotate(82deg);
+}
+.egg-panel.falling {
+  transition: transform 0.65s cubic-bezier(0.55, 0, 1, 0.45), opacity 0.5s ease-in 0.15s;
+  transform: translateY(260px) rotate(140deg);
+  opacity: 0;
+}
+
+/* Rainbow border for mega-starred lunches */
+.rainbow-border {
+  border: 3px solid transparent;
+  background-image:
+    linear-gradient(#0f3460, #0f3460),
+    linear-gradient(135deg, #ff0000, #ff8800, #ffff00, #00cc00, #0000ff, #8800ff, #ff0088);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 400% 400%;
+  animation: cubeRainbow 2.5s linear infinite;
+}

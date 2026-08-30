@@ -6,6 +6,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, storage } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
+import MegaStar from '../components/MegaStar'
 
 function toDateInputValue(firestoreDate) {
   if (!firestoreDate) return ''
@@ -17,6 +18,47 @@ function formatDisplayDate(firestoreDate) {
   if (!firestoreDate) return ''
   const d = firestoreDate.toDate ? firestoreDate.toDate() : new Date(firestoreDate)
   return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function toMillis(firestoreDate) {
+  if (!firestoreDate) return 0
+  const d = firestoreDate.toDate ? firestoreDate.toDate() : new Date(firestoreDate)
+  return d.getTime()
+}
+
+function getAvgRating(lunch) {
+  const vals = Object.values(lunch.ratings || {}).map((r) => r.overall).filter(Boolean)
+  if (!vals.length) return null
+  return vals.reduce((a, b) => a + b, 0) / vals.length
+}
+
+function getTotalMegaStars(lunch) {
+  return Object.keys(lunch.megaStars || {}).length
+}
+
+const SORT_OPTIONS = [
+  { value: 'date',        label: 'Date (Newest First)' },
+  { value: 'rating-desc', label: 'Rating (High to Low)' },
+  { value: 'rating-asc',  label: 'Rating (Low to High)' },
+  { value: 'packed-desc', label: 'Last Packed (Most Recent)' },
+  { value: 'mega-desc',   label: 'Mega Stars (Most First)' },
+  { value: 'mega-asc',    label: 'Mega Stars (Least First)' },
+  { value: 'alpha-asc',   label: 'Name (A to Z)' },
+  { value: 'alpha-desc',  label: 'Name (Z to A)' },
+]
+
+function sortLunches(list, mode) {
+  const arr = [...list]
+  switch (mode) {
+    case 'rating-desc': return arr.sort((a, b) => (getAvgRating(b) || 0) - (getAvgRating(a) || 0))
+    case 'rating-asc':  return arr.sort((a, b) => (getAvgRating(a) || 0) - (getAvgRating(b) || 0))
+    case 'packed-desc': return arr.sort((a, b) => toMillis(b.lastPacked || b.date) - toMillis(a.lastPacked || a.date))
+    case 'mega-desc':   return arr.sort((a, b) => getTotalMegaStars(b) - getTotalMegaStars(a))
+    case 'mega-asc':    return arr.sort((a, b) => getTotalMegaStars(a) - getTotalMegaStars(b))
+    case 'alpha-asc':   return arr.sort((a, b) => a.name.localeCompare(b.name))
+    case 'alpha-desc':  return arr.sort((a, b) => b.name.localeCompare(a.name))
+    default:             return arr.sort((a, b) => toMillis(b.date) - toMillis(a.date))
+  }
 }
 
 function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
@@ -83,6 +125,20 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
     await updateDoc(lunchRef, { ratings })
   }
 
+  async function toggleMegaStar(uid, isActive) {
+    const megaStars = { ...(lunch.megaStars || {}) }
+    if (isActive) {
+      megaStars[uid] = true
+    } else {
+      delete megaStars[uid]
+    }
+    await updateDoc(lunchRef, { megaStars })
+  }
+
+  async function markPackedToday() {
+    await updateDoc(lunchRef, { lastPacked: Timestamp.fromDate(new Date()) })
+  }
+
   async function handlePhotoChange(e) {
     const file = e.target.files[0]
     if (!file) return
@@ -116,16 +172,15 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
 
   const myRating = lunch.ratings?.[currentUser.uid]?.overall || 0
 
-  const avgRating = (() => {
-    const vals = Object.values(lunch.ratings || {}).map((r) => r.overall).filter(Boolean)
-    if (!vals.length) return null
-    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
-  })()
+  const avgRatingNum = getAvgRating(lunch)
+  const avgRating = avgRatingNum ? avgRatingNum.toFixed(1) : null
+
+  const totalMegaStars = getTotalMegaStars(lunch)
 
   const displayImage = photoPreview || lunch.imageUrl
 
   return (
-    <div className="bg-[#0f3460] rounded-2xl border border-green-400/20 overflow-hidden">
+    <div className={`rounded-2xl overflow-hidden ${totalMegaStars > 0 ? 'rainbow-border' : 'bg-[#0f3460] border border-green-400/20'}`}>
       {displayImage && (
         <img
           src={displayImage}
@@ -136,7 +191,7 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
       )}
       <div className="p-4">
         {/* Name row */}
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-1 gap-2">
           {editingName && canEdit ? (
             <div className="flex gap-2 flex-1">
               <input
@@ -150,14 +205,23 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
               <button onClick={() => setEditingName(false)} className="text-gray-400 text-sm px-1">✕</button>
             </div>
           ) : (
-            <h3
-              className={`text-lg font-bold text-white ${canEdit ? 'cursor-pointer hover:text-green-300' : ''}`}
-              onClick={() => canEdit && setEditingName(true)}
-              title={canEdit ? 'Click to rename' : ''}
-            >
-              {lunch.name}
-              {canEdit && <span className="ml-1 text-xs text-green-500 opacity-50">✎</span>}
-            </h3>
+            <>
+              <h3
+                className={`text-lg font-bold text-white truncate min-w-0 ${canEdit ? 'cursor-pointer hover:text-green-300' : ''}`}
+                onClick={() => canEdit && setEditingName(true)}
+                title={canEdit ? 'Click to rename' : ''}
+              >
+                {lunch.name}
+                {canEdit && <span className="ml-1 text-xs text-green-500 opacity-50">✎</span>}
+              </h3>
+              <button
+                onClick={markPackedToday}
+                className="flex-shrink-0 text-[10px] font-bold text-green-400/70 border border-green-400/30 rounded-full px-2 py-1 hover:bg-green-400/10 hover:text-green-300"
+                title="Mark this lunch as packed today"
+              >
+                📦 Packed Today
+              </button>
+            </>
           )}
         </div>
 
@@ -175,7 +239,7 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
           </div>
         ) : (
           <p
-            className={`text-green-300/50 text-xs mb-3 ${canEdit ? 'cursor-pointer hover:text-green-300/80' : ''}`}
+            className={`text-green-300/50 text-xs ${lunch.lastPacked ? 'mb-0.5' : 'mb-3'} ${canEdit ? 'cursor-pointer hover:text-green-300/80' : ''}`}
             onClick={() => canEdit && setEditingDate(true)}
             title={canEdit ? 'Click to change date' : ''}
           >
@@ -184,19 +248,40 @@ function LunchCard({ lunch, currentUser, userProfile, allUsers }) {
           </p>
         )}
 
+        {lunch.lastPacked && (
+          <p className="text-green-300/40 text-[11px] mb-3">
+            📦 Last packed {formatDisplayDate(lunch.lastPacked)}
+          </p>
+        )}
+
         {/* Ratings */}
-        <div className="flex items-center gap-3 mb-3">
-          {canRate && (
-            <div>
-              <p className="text-xs text-green-300/60 mb-0.5">Your rating</p>
-              <StarRating value={myRating} onChange={rateOverall} />
-            </div>
-          )}
-          {avgRating && (
-            <div className="ml-auto text-right">
-              <p className="text-xs text-green-300/60 mb-0.5">Avg</p>
-              <span className="text-yellow-400 font-black text-lg">{avgRating}★</span>
-            </div>
+        <div className="mb-3">
+          <div className="flex items-center gap-3">
+            {canRate && (
+              <div>
+                <p className="text-xs text-green-300/60 mb-0.5">Your rating</p>
+                <div className="flex items-center">
+                  <StarRating value={myRating} onChange={rateOverall} />
+                  {myRating === 5 && (
+                    <MegaStar
+                      active={!!lunch.megaStars?.[currentUser.uid]}
+                      onToggle={(next) => toggleMegaStar(currentUser.uid, next)}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+            {avgRating && (
+              <div className="ml-auto text-right">
+                <p className="text-xs text-green-300/60 mb-0.5">Avg</p>
+                <span className="text-yellow-400 font-black text-lg">{avgRating}★</span>
+              </div>
+            )}
+          </div>
+          {totalMegaStars > 0 && (
+            <p className="text-xs font-bold text-yellow-300 mt-1">
+              🌟 {totalMegaStars} mega star{totalMegaStars !== 1 ? 's' : ''} for this meal
+            </p>
           )}
         </div>
 
@@ -347,6 +432,7 @@ export default function Lunches() {
   const [imagePreview, setImagePreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [loadingLunches, setLoadingLunches] = useState(true)
+  const [sortBy, setSortBy] = useState('date')
 
   useEffect(() => {
     if (!userProfile?.familyId) return
@@ -480,6 +566,24 @@ export default function Lunches() {
         </form>
       )}
 
+      {lunches.length > 0 && (
+        <div className="flex items-center gap-2 mb-4">
+          <label htmlFor="lunch-sort" className="text-green-300/60 text-xs font-bold uppercase tracking-wide">
+            Sort by
+          </label>
+          <select
+            id="lunch-sort"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-[#16213e] border border-green-400/30 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-green-400"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loadingLunches ? (
         <div className="text-center py-16 text-green-300/40">
           <p className="font-semibold">Loading lunches...</p>
@@ -492,7 +596,7 @@ export default function Lunches() {
       )}
 
       <div className="flex flex-col gap-4">
-        {lunches.map((lunch) => (
+        {sortLunches(lunches, sortBy).map((lunch) => (
           <LunchCard
             key={lunch.id}
             lunch={lunch}

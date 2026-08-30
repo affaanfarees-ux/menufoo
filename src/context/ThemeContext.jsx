@@ -25,6 +25,16 @@ export function ThemeProvider({ children }) {
   const [obstacleCount, setObstacleCountState] = useState(() => parseInt(localStorage.getItem('mf_obs_count') || '4', 10))
   const [specialObstacles, setSpecialObstacles] = useState(() => localStorage.getItem('mf_obs_special') !== 'false')
 
+  // Not persisted — the secret panel resets to hidden on every page reload.
+  const [extremeUnlocked, setExtremeUnlockedState] = useState(false)
+  const [cubeRotate, setCubeRotate] = useState(() => localStorage.getItem('mf_cube_rotate') === 'true')
+  const [cubeFace, setCubeFace] = useState(() => localStorage.getItem('mf_cube_face') === 'true')
+  const [bonkMode, setBonkMode] = useState(() => localStorage.getItem('mf_bonk') === 'true')
+  const [cubeSizeOverride, setCubeSizeOverrideState] = useState(() => {
+    const v = localStorage.getItem('mf_cube_size_override')
+    return v ? parseInt(v, 10) : null
+  })
+
   const current = COLORS.find((c) => c.id === colorId) || COLORS[0]
 
   useEffect(() => {
@@ -64,8 +74,53 @@ export function ThemeProvider({ children }) {
     })
   }
 
+  function unlockExtreme() {
+    setExtremeUnlockedState(true)
+  }
+
+  function toggleCubeRotate() {
+    setCubeRotate((prev) => {
+      localStorage.setItem('mf_cube_rotate', !prev)
+      return !prev
+    })
+  }
+
+  function toggleCubeFace() {
+    setCubeFace((prev) => {
+      localStorage.setItem('mf_cube_face', !prev)
+      return !prev
+    })
+  }
+
+  function toggleBonkMode() {
+    setBonkMode((prev) => {
+      localStorage.setItem('mf_bonk', !prev)
+      return !prev
+    })
+  }
+
+  function setCubeSizeOverride(n) {
+    setCubeSizeOverrideState(n)
+    if (n == null) {
+      localStorage.removeItem('mf_cube_size_override')
+    } else {
+      localStorage.setItem('mf_cube_size_override', String(n))
+    }
+  }
+
   return (
-    <ThemeContext.Provider value={{ colorId, setColor, current, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, obstacleCount, setObstacleCount, specialObstacles, toggleSpecialObstacles }}>
+    <ThemeContext.Provider value={{
+      colorId, setColor, current, COLORS,
+      cubeEnabled, toggleCube,
+      obstaclesEnabled, toggleObstacles,
+      obstacleCount, setObstacleCount,
+      specialObstacles, toggleSpecialObstacles,
+      extremeUnlocked, unlockExtreme,
+      cubeRotate, toggleCubeRotate,
+      cubeFace, toggleCubeFace,
+      bonkMode, toggleBonkMode,
+      cubeSizeOverride, setCubeSizeOverride,
+    }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { RELATIONSHIP_OPTIONS } from '../constants/family'
+import SecretPanel from '../components/SecretPanel'
 
 const SWATCH_PREVIEWS = {
   default: 'bg-[#1a1a2e]',
@@ -202,8 +203,100 @@ function FriendSettings({ familyId }) {
   )
 }
 
+function ToggleRow({ icon, label, desc, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+        active ? 'border-purple-400 bg-purple-400/10' : 'border-purple-400/20 hover:border-purple-400/40'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-xl">{icon}</span>
+        <div className="text-left">
+          <p className="text-white font-bold text-sm">{label}</p>
+          <p className="text-purple-300/50 text-xs">{desc}</p>
+        </div>
+      </div>
+      <div className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors flex-shrink-0 ml-3 ${active ? 'bg-purple-400' : 'bg-purple-400/20'}`}>
+        <div className={`w-4 h-4 rounded-full bg-white transition-transform ${active ? 'translate-x-6' : 'translate-x-0'}`} />
+      </div>
+    </button>
+  )
+}
+
+function ExtremeSettings() {
+  const {
+    cubeRotate, toggleCubeRotate,
+    cubeFace, toggleCubeFace,
+    bonkMode, toggleBonkMode,
+    cubeSizeOverride, setCubeSizeOverride,
+  } = useTheme()
+
+  return (
+    <div className="border-2 border-purple-400/30 bg-purple-400/5 rounded-xl p-4 mb-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-purple-300 text-xs font-black uppercase tracking-widest">🔓 Extreme Settings</p>
+        <p className="text-orange-300/80 text-[11px] font-bold">⚠️ Might glitch, be careful</p>
+      </div>
+      <p className="text-purple-300/50 text-xs -mt-2">You found the secret panel. Nice.</p>
+
+      <ToggleRow
+        icon="🌀"
+        label="Tumbling Cube"
+        desc="The cube spins as it rolls and bounces"
+        active={cubeRotate}
+        onClick={toggleCubeRotate}
+      />
+      <ToggleRow
+        icon="🙂"
+        label="Smiley Face"
+        desc="Gives the cube a face"
+        active={cubeFace}
+        onClick={toggleCubeFace}
+      />
+      <ToggleRow
+        icon="💥"
+        label="Bonk Mode"
+        desc="Impacts push the cube back harder the faster it's going"
+        active={bonkMode}
+        onClick={toggleBonkMode}
+      />
+
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-white font-bold text-sm">Cube Size</p>
+          <button
+            onClick={() => setCubeSizeOverride(null)}
+            className="text-purple-300/60 hover:text-purple-300 text-xs font-bold"
+          >
+            Reset to auto
+          </button>
+        </div>
+        <input
+          type="range"
+          min={40}
+          max={500}
+          value={cubeSizeOverride ?? 288}
+          onChange={(e) => setCubeSizeOverride(parseInt(e.target.value, 10))}
+          className="w-full accent-purple-400"
+        />
+        <p className="text-purple-300/50 text-xs mt-1">
+          {cubeSizeOverride ? `${cubeSizeOverride}px (fixed)` : 'Auto (scales with your screen)'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function Settings() {
-  const { colorId, setColor, COLORS, cubeEnabled, toggleCube, obstaclesEnabled, toggleObstacles, specialObstacles, toggleSpecialObstacles } = useTheme()
+  const {
+    colorId, setColor, COLORS,
+    cubeEnabled, toggleCube,
+    obstaclesEnabled, toggleObstacles,
+    specialObstacles, toggleSpecialObstacles,
+    extremeUnlocked,
+  } = useTheme()
   const { userProfile } = useAuth()
   const [copied, setCopied] = useState(false)
 
@@ -284,6 +377,8 @@ export default function Settings() {
           Fun Stuff
         </h2>
         <p className="text-green-300/50 text-xs mb-4">Just for fun. Has no effect on your data.</p>
+
+        {extremeUnlocked ? <ExtremeSettings /> : <SecretPanel />}
 
         <button
           onClick={toggleCube}

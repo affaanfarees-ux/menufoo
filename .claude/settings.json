@@ -4,7 +4,11 @@
       "Bash(curl -s \"https://api.github.com/*\")",
       "Bash(npm run lint)",
       "Bash(where *)",
-      "Bash(sleep *)"
+      "Bash(sleep *)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(curl -s http://localhost:5173/menufoo/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/menufoo/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/menufoo/)"
     ]
   }
 }
